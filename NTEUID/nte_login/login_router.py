@@ -110,9 +110,10 @@ async def nte_login_status(auth_token: str) -> JSONResponse:
     state: Optional[LoginState] = LOGIN_CACHE.get(auth_token)
     if not state:
         return JSONResponse({"status": "expired"})
-    return JSONResponse({
-        "status": state.status,
-        "ok": state.ok,
-        "roles": [{"uid": uid, "name": name} for uid, name in state.roles],
-        "msg": state.msg,
-    })
+    return JSONResponse(
+        {
+            "status": state.status,
+            "ok": state.ok,
+            "msg": state.msg,
+        }
+    )

@@ -359,7 +359,7 @@
           code.disabled = true;
           sendBtn.disabled = true;
           loginBtn.textContent = MSG.loginSuccess;
-          showStatus(reply.uid ? `${MSG.loginSuccess} · UID ${reply.uid}` : MSG.loginSuccess, true);
+          showStatus(MSG.loginSuccess, true);
           window.location.replace('/nte/done');
           return;
         }

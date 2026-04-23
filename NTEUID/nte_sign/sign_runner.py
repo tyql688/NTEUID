@@ -19,7 +19,7 @@ batch_lock = asyncio.Lock()
 
 
 async def run_user_sign(user_id: str, bot_id: str) -> str:
-    users = await NTEUser.list_active(user_id, bot_id)
+    users = await NTEUser.list_sign_targets_by_user(user_id, bot_id)
     if not users:
         return SignMsg.NOT_LOGGED_IN
     blocks = [await _sign_locked(g) for g in _group_by_center(users)]
@@ -31,7 +31,7 @@ async def run_all_sign() -> str | None:
     if batch_lock.locked():
         return None
     async with batch_lock:
-        return await _run_batch(await NTEUser.list_active_all(), "异环全部签到：")
+        return await _run_batch(await NTEUser.list_sign_targets_all(), "异环全部签到：")
 
 
 async def run_scheduled_sign() -> str | None:
@@ -39,9 +39,9 @@ async def run_scheduled_sign() -> str | None:
         return None
     async with batch_lock:
         if NTEConfig.get_config("NTESignAll").data:
-            users, header = await NTEUser.list_active_all(), "异环定时签到（全员）："
+            users, header = await NTEUser.list_sign_targets_all(), "异环定时签到（全员）："
         else:
-            users, header = await NTEUser.list_auto_sign(), "异环定时签到（订阅）："
+            users, header = await NTEUser.list_sign_subscribers(), "异环定时签到（订阅）："
         return await _run_batch(users, header)
 
 

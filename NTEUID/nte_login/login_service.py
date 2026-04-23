@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
-from typing import List, Tuple, Optional, TypedDict
+from typing import List, Tuple, Optional
 from pathlib import Path
 from datetime import datetime
 from dataclasses import dataclass
@@ -18,26 +18,16 @@ from ..utils.msgs import LoginMsg, send_nte_notify
 from ..utils.cache import TimedCache
 from ..utils.utils import get_public_ip
 from ..utils.database import NTEUser
-from ..utils.constants import LAOHU_APP_ID, LAOHU_APP_KEY, GAME_ID_YIHUAN
+from ..utils.constants import LAOHU_APP_ID, LAOHU_APP_KEY
 from ..utils.sdk.laohu import LaohuClient, LaohuDevice
 from ..utils.sdk.tajiduo import TajiduoClient
+from ..utils.game_registry import PRIMARY_GAME_ID, GAME_SIGN_SWITCHES
 from ..nte_config.nte_config import NTEConfig
 from ..utils.sdk.tajiduo_model import GameRoleList, TajiduoError
 
 LOGIN_CACHE: TimedCache = TimedCache(timeout=600, maxsize=32)
 LOGIN_WAIT_SECONDS = 600
 LOGIN_POLL_INTERVAL = 2.0
-
-
-class _LoginFields(TypedDict):
-    """`perform_login` 落库时 upsert 的账号级字段（同 center_uid 的多角色共享这些值）。"""
-
-    dev_code: str
-    cookie: str
-    access_token: str
-    access_token_updated_at: datetime
-    laohu_token: str
-    laohu_user_id: str
 
 
 @dataclass
@@ -48,23 +38,21 @@ class LoginState:
     device: LaohuDevice
     status: str = "pending"  # pending | success | failed
     ok: bool = False
-    roles: Tuple[Tuple[str, str], ...] = ()  # ((role_id, role_name), ...)
-    msg: Optional[str] = None
+    msg: str = ""
 
 
 @dataclass
 class LoginResult:
     ok: bool
     msg: str = ""
-    uid: str = ""
 
     @classmethod
     def fail(cls, msg: str) -> "LoginResult":
         return cls(ok=False, msg=msg)
 
     @classmethod
-    def success(cls, uid: str = "", msg: str = "") -> "LoginResult":
-        return cls(ok=True, uid=uid, msg=msg)
+    def success(cls, msg: str = "") -> "LoginResult":
+        return cls(ok=True, msg=msg)
 
 
 async def _login_page_url() -> str:
@@ -90,29 +78,20 @@ async def request_login(bot: Bot, ev: Event) -> None:
     if LOGIN_CACHE.get(auth_token):
         return
 
-    LOGIN_CACHE.set(auth_token, LoginState(
-        user_id=ev.user_id,
-        bot_id=ev.bot_id,
-        group_id=ev.group_id,
-        device=LaohuDevice(),
-    ))
+    LOGIN_CACHE.set(
+        auth_token,
+        LoginState(
+            user_id=ev.user_id,
+            bot_id=ev.bot_id,
+            group_id=ev.group_id,
+            device=LaohuDevice(),
+        ),
+    )
 
     result = await _wait(auth_token)
-    if not result:
+    if result is None:
         return await send_nte_notify(bot, ev, LoginMsg.TIMEOUT)
-    if not result.ok:
-        if result.msg is None:
-            raise RuntimeError("登录失败状态缺少用户提示")
-        return await send_nte_notify(bot, ev, result.msg)
-    await send_nte_notify(bot, ev, _format_login_success(result.roles))
-
-
-def _format_login_success(roles: Tuple[Tuple[str, str], ...]) -> str:
-    if not roles:
-        return LoginMsg.SUCCESS_NO_ROLE
-    lines = [LoginMsg.SUCCESS_ROLES_TITLE]
-    lines.extend(f"· {name}（{uid}）" for uid, name in roles)
-    return "\n".join(lines)
+    await send_nte_notify(bot, ev, result.msg)
 
 
 def _auth_token(user_id: str) -> str:
@@ -137,34 +116,45 @@ async def perform_login(auth_token: str, mobile: str, code: str) -> LoginResult:
     account = await laohu.login_by_sms(mobile, code)
     tajiduo = TajiduoClient(device_id=state.device.device_id)
     tj_session = await tajiduo.user_center_login(account.token, str(account.user_id))
-    roles = await _collect_roles(tajiduo, GAME_ID_YIHUAN)
+    roles = await _collect_all_roles(tajiduo)
+    if not roles:
+        mark_login_failed(auth_token, LoginMsg.NO_SUPPORTED_GAME)
+        return LoginResult.fail(LoginMsg.NO_SUPPORTED_GAME)
 
-    await _persist(
+    await NTEUser.sync_account_roles(
         user_id=state.user_id,
         bot_id=state.bot_id,
         center_uid=tj_session.center_uid,
-        game_id=GAME_ID_YIHUAN,
-        roles=roles,
-        fields={
-            "dev_code": state.device.device_id,
-            "cookie": tj_session.refresh_token,
-            "access_token": tj_session.access_token,
-            "access_token_updated_at": datetime.now(),
-            "laohu_token": account.token,
-            "laohu_user_id": str(account.user_id),
-        },
+        entries=roles,
+        status="",
+        dev_code=state.device.device_id,
+        cookie=tj_session.refresh_token,
+        access_token=tj_session.access_token,
+        access_token_updated_at=datetime.now(),
+        laohu_token=account.token,
+        laohu_user_id=str(account.user_id),
     )
 
     state.status = "success"
-    state.roles = tuple((rid, name) for rid, name, _ in roles)
     state.ok = True
+    state.msg = LoginMsg.TAJIDUO_SUCCESS
     LOGIN_CACHE.set(auth_token, state)
     logger.info(
         f"[NTE登录] user_id={state.user_id} center_uid={tj_session.center_uid} "
         f"roles={[rid for rid, _, _ in roles]} 登录完成"
     )
-    primary_uid = roles[0][0] if roles else ""
-    return LoginResult.success(uid=primary_uid)
+    return LoginResult.success(msg=LoginMsg.TAJIDUO_SUCCESS)
+
+
+async def _collect_all_roles(tajiduo: TajiduoClient) -> List[Tuple[str, str, str]]:
+    """按注册表顺序把所有游戏的角色都拉一遍；塔吉多后端按 gameId 独立存储，
+    互不覆盖。签到是否实际签某个游戏由签到编排层按开关决定，这里无条件全拉——
+    开关拨动后不用重登/重刷就能立即生效。
+    """
+    collected: List[Tuple[str, str, str]] = []
+    for game_id in GAME_SIGN_SWITCHES:
+        collected.extend(await _collect_roles(tajiduo, game_id))
+    return collected
 
 
 async def _collect_roles(tajiduo: TajiduoClient, game_id: str) -> List[Tuple[str, str, str]]:
@@ -187,7 +177,8 @@ async def _collect_roles(tajiduo: TajiduoClient, game_id: str) -> List[Tuple[str
             collected.append((item.uid, item.role_name.strip(), game_id))
             seen.add(item.uid)
 
-    await _ensure_bind_role(tajiduo, game_id, extras)
+    if game_id == PRIMARY_GAME_ID:
+        await _ensure_bind_role(tajiduo, game_id, extras)
     return collected
 
 
@@ -297,7 +288,29 @@ async def refresh_user_token(user: NTEUser) -> bool:
         refresh_token=session.refresh_token,
         access_token=session.access_token,
     )
-    logger.info(f"[NTE刷新令牌] 账号 {session.center_uid} 已刷新")
+
+    # 顺带同步异环 + 幻塔角色，避免老用户打开幻塔签到开关后还得重登。
+    # `user_center_login` 已把 access_token 写回 client 内部状态，可直接跑 authed 接口。
+    # 角色同步失败不影响 refresh 成功语义——tokens 已经落库，下次签到会重试拉角色。
+    try:
+        roles = await _collect_all_roles(tajiduo)
+        await NTEUser.sync_account_roles(
+            user_id=user.user_id,
+            bot_id=user.bot_id,
+            center_uid=session.center_uid,
+            entries=roles,
+            status="",
+            dev_code=user.dev_code,
+            cookie=session.refresh_token,
+            access_token=session.access_token,
+            access_token_updated_at=datetime.now(),
+            laohu_token=user.laohu_token,
+            laohu_user_id=user.laohu_user_id,
+        )
+    except TajiduoError as error:
+        logger.warning(f"[NTE刷新令牌] 账号 {session.center_uid} 角色同步失败: {error.message}")
+        return True
+    logger.info(f"[NTE刷新令牌] 账号 {session.center_uid} 已刷新，同步 {len(roles)} 个角色")
     return True
 
 
@@ -309,37 +322,3 @@ def mark_login_failed(auth_token: str, msg: str) -> None:
     state.ok = False
     state.msg = msg
     LOGIN_CACHE.set(auth_token, state)
-
-
-async def _persist(
-    *,
-    user_id: str,
-    bot_id: str,
-    center_uid: str,
-    game_id: str,
-    roles: List[Tuple[str, str, str]],
-    fields: _LoginFields,
-) -> None:
-    """为每个角色 upsert 一行；没有任何角色时写一行占位（uid=""）。
-
-    登录拉到真角色后会清掉同账号的占位行——避免「先登录(无角色) → 再登录(有角色)」
-    后库里留一条僵尸占位。
-    """
-    entries: List[Tuple[str, str, str]] = roles if roles else [("", "", game_id)]
-    shared = {**fields, "center_uid": center_uid, "status": ""}
-
-    for role_uid, role_name, role_game_id in entries:
-        row_data = {**shared, "uid": role_uid, "role_name": role_name, "game_id": role_game_id}
-        if await NTEUser.get_row(user_id, bot_id, center_uid, role_uid):
-            await NTEUser.update_data_by_data(
-                select_data={
-                    "user_id": user_id, "bot_id": bot_id,
-                    "center_uid": center_uid, "uid": role_uid,
-                },
-                update_data=row_data,
-            )
-        else:
-            await NTEUser.insert_data(user_id=user_id, bot_id=bot_id, **row_data)
-
-    if roles:
-        await NTEUser.delete_placeholders(user_id, bot_id, center_uid)

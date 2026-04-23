@@ -58,6 +58,11 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
         "关闭后将不再执行定时签到任务",
         True,
     ),
+    "NTESignHuanta": GsBoolConfig(
+        "签到时一并签幻塔",
+        "打开后同账号下的幻塔角色也会一起签；老账号首次打开后需要执行一次【刷新令牌】补拉幻塔角色",
+        False,
+    ),
     "NTESignTime": GsTimeRConfig(
         "定时签到时间",
         "每天自动签到时间（时, 分），重启后生效",

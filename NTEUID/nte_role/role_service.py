@@ -31,9 +31,6 @@ async def _ensure_ctx(bot: Bot, ev: Event, tag: str) -> Optional[Tuple[NTEUser, 
     if user is None:
         await send_nte_notify(bot, ev, RoleMsg.NOT_LOGGED_IN)
         return None
-    if not user.uid:
-        await send_nte_notify(bot, ev, RoleMsg.NO_ROLE)
-        return None
 
     try:
         client = await ensure_tajiduo_client(user)
@@ -75,8 +72,6 @@ async def run_character_detail(bot: Bot, ev: Event, char_name: str) -> None:
     user = await NTEUser.get_active(ev.user_id, ev.bot_id)
     if user is None:
         return await send_nte_notify(bot, ev, RoleMsg.NOT_LOGGED_IN)
-    if not user.uid:
-        return await send_nte_notify(bot, ev, RoleMsg.NO_ROLE)
 
     cached = await load_role_characters_cache(user.uid)
     if not cached:

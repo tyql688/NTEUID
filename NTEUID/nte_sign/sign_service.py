@@ -23,6 +23,7 @@ from ..utils.constants import (
     TAJIDUO_SIGNIN_COMMUNITY_ID,
 )
 from ..utils.sdk.tajiduo import TajiduoClient
+from ..utils.game_registry import GAME_SIGN_SWITCHES
 from ..nte_config.nte_config import NTEConfig
 from ..utils.sdk.tajiduo_model import (
     UserTask,
@@ -58,7 +59,13 @@ async def sign_account(users: List[NTEUser]) -> str:
         return f"{header}\n  · {SignMsg.LOGIN_EXPIRED}"
 
     lines: List[str] = [header, f"  · {await _app_sign(client, primary.center_uid)}"]
-    roles = [u for u in users if u.uid]
+    disabled_games = {
+        gid
+        for gid, switch in GAME_SIGN_SWITCHES.items()
+        if switch is not None and not NTEConfig.get_config(switch).data
+    }
+    roles = [u for u in users if u.game_id not in disabled_games]
+
     if roles:
         for user in roles:
             lines.append(f"  · {await _game_sign(client, user)}")
@@ -98,19 +105,20 @@ async def _game_sign(client: TajiduoClient, user: NTEUser) -> str:
     跳过单个角色的签到——只走本地 record 幂等 + POST 响应判定。
     """
     label = f"{user.role_name} 游戏签到"
-    if await NTESignRecord.is_signed(user.uid, SIGN_KIND_GAME):
+    record_ref = f"{user.game_id}:{user.uid}"
+    if await NTESignRecord.is_signed(record_ref, SIGN_KIND_GAME):
         return _fmt(label, STATUS_SKIP, "今日已签")
 
     try:
         data = await client.game_signin(user.uid, user.game_id)
     except TajiduoError as error:
         if _is_already_signed(error):
-            await NTESignRecord.record(user.uid, SIGN_KIND_GAME, payload=error.raw)
+            await NTESignRecord.record(record_ref, SIGN_KIND_GAME, payload=error.raw)
             return _fmt(label, STATUS_SKIP, "今日已签")
         logger.warning(f"[NTE签到] 角色 {user.uid} 游戏签到失败: {error.message}")
         return _fmt(label, STATUS_FAIL, SignMsg.FAILED)
 
-    await NTESignRecord.record(user.uid, SIGN_KIND_GAME, payload=data)
+    await NTESignRecord.record(record_ref, SIGN_KIND_GAME, payload=data)
     return _fmt(label, STATUS_OK)
 
 
@@ -235,9 +243,7 @@ async def _advance_task(
             consecutive_fail += 1
             total_fail += 1
             if consecutive_fail >= max_failures:
-                logger.warning(
-                    f"[NTE签到] 任务 {task.task_key} 连续失败 {consecutive_fail} 次熔断: {error.message}"
-                )
+                logger.warning(f"[NTE签到] 任务 {task.task_key} 连续失败 {consecutive_fail} 次熔断: {error.message}")
                 break
         else:
             if counted:
