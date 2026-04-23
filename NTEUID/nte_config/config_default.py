@@ -96,10 +96,10 @@ CONFIG_DEFAULT: Dict[str, GSC] = {
         3,
         max_value=10,
     ),
-    "NTETaskActionDelay": GsTimeRConfig(
+    "NTETaskActionDelay": GsListConfig(
         "社区任务动作间隔（秒）",
-        "每次浏览/点赞/分享之间随机 sleep 的 (min, max)",
-        (1, 3),
+        "每次浏览/点赞/分享之间随机 sleep 的 [min, max]",
+        [1, 3],
     ),
     "NTESignBatchDelay": GsTimeRConfig(
         "批次签到间隔（秒）",
