@@ -94,6 +94,41 @@ async def request_login(bot: Bot, ev: Event) -> None:
     await send_nte_notify(bot, ev, result.msg)
 
 
+async def login_by_laohu_token(bot: Bot, ev: Event, laohu_token: str, laohu_user_id: str) -> None:
+    device = LaohuDevice()
+    tajiduo = TajiduoClient(device_id=device.device_id)
+    try:
+        tj_session = await tajiduo.user_center_login(laohu_token, laohu_user_id)
+        roles = await _collect_all_roles(tajiduo)
+    except TajiduoError as error:
+        logger.warning(f"[NTE登录] 老虎 token 登录失败 user_id={ev.user_id}: {error.message}")
+        await send_nte_notify(bot, ev, LoginMsg.USER_CENTER_LOGIN_FAILED)
+        return
+
+    if not roles:
+        await send_nte_notify(bot, ev, LoginMsg.NO_SUPPORTED_GAME)
+        return
+
+    await NTEUser.sync_account_roles(
+        user_id=ev.user_id,
+        bot_id=ev.bot_id,
+        center_uid=tj_session.center_uid,
+        entries=roles,
+        status="",
+        dev_code=device.device_id,
+        cookie=tj_session.refresh_token,
+        access_token=tj_session.access_token,
+        access_token_updated_at=datetime.now(),
+        laohu_token=laohu_token,
+        laohu_user_id=laohu_user_id,
+    )
+
+    logger.info(
+        f"[NTE登录] user_id={ev.user_id} center_uid={tj_session.center_uid} roles={[rid for rid, _, _ in roles]} 登录完成"
+    )
+    await send_nte_notify(bot, ev, LoginMsg.TAJIDUO_SUCCESS)
+
+
 def _auth_token(user_id: str) -> str:
     """按 user_id 生成稳定的登录 token，同一个 QQ 永远映射到同一个登录页。"""
     return hashlib.sha256(user_id.encode()).hexdigest()[:8]
@@ -140,8 +175,7 @@ async def perform_login(auth_token: str, mobile: str, code: str) -> LoginResult:
     state.msg = LoginMsg.TAJIDUO_SUCCESS
     LOGIN_CACHE.set(auth_token, state)
     logger.info(
-        f"[NTE登录] user_id={state.user_id} center_uid={tj_session.center_uid} "
-        f"roles={[rid for rid, _, _ in roles]} 登录完成"
+        f"[NTE登录] user_id={state.user_id} center_uid={tj_session.center_uid} roles={[rid for rid, _, _ in roles]} 登录完成"
     )
     return LoginResult.success(msg=LoginMsg.TAJIDUO_SUCCESS)
 

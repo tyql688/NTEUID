@@ -1,10 +1,12 @@
+import re
+
 from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
 from . import login_router
 from ..utils.msgs import LoginMsg, send_nte_notify
-from .login_service import request_login, refresh_all_user_tokens
+from .login_service import request_login, login_by_laohu_token, refresh_all_user_tokens
 from ..utils.database import NTEUser
 
 _ = login_router  # 纯副作用 import：FastAPI 路由在模块加载时注册
@@ -12,9 +14,21 @@ _ = login_router  # 纯副作用 import：FastAPI 路由在模块加载时注册
 sv_nte_login = SV("nte登录")
 
 
-@sv_nte_login.on_fullmatch(("登录", "login"))
+@sv_nte_login.on_command(("登录", "login"))
 async def nte_login_cmd(bot: Bot, ev: Event):
-    await request_login(bot, ev)
+    text = re.sub(r'["\n\t ]+', "", ev.text.strip())
+    text = text.replace("，", ",")
+
+    if text == "":
+        await request_login(bot, ev)
+
+    elif "," in text:
+        tokens = text.split(",")
+        if len(tokens) == 2 and len(tokens[0]) == 32 and tokens[1].isdigit() and len(tokens[1]) == 9:
+            return await login_by_laohu_token(bot, ev, tokens[0], tokens[1])
+
+    else:
+        return await send_nte_notify(bot, ev, LoginMsg.USER_CENTER_LOGIN_FAILED)
 
 
 @sv_nte_login.on_fullmatch(("退出登录", "登出", "logout"))
