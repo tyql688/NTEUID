@@ -2,7 +2,7 @@ from gsuid_core.sv import SV
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
-from .alias_service import run_role_alias_list, run_role_alias_action
+from .alias_service import run_char_alias_list, run_char_alias_action
 from ..utils.constants import COMMAND_NAME_PATTERN
 
 sv_nte_alias = SV("nte角色别名", pm=0, priority=0)
@@ -14,7 +14,7 @@ sv_nte_role_alias = SV("nte角色别名列表")
     block=True,
 )
 async def nte_role_alias_action(bot: Bot, ev: Event):
-    await run_role_alias_action(
+    await run_char_alias_action(
         bot,
         ev,
         ev.regex_dict.get("action", ""),
@@ -28,4 +28,4 @@ async def nte_role_alias_action(bot: Bot, ev: Event):
     block=True,
 )
 async def nte_role_alias(bot: Bot, ev: Event):
-    await run_role_alias_list(bot, ev, ev.regex_dict.get("char_name", ""))
+    await run_char_alias_list(bot, ev, ev.regex_dict.get("char_name", ""))

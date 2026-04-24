@@ -20,7 +20,7 @@ from ..utils.msgs import RoleMsg, send_nte_notify
 from ..utils.session import ensure_tajiduo_client
 from ..utils.database import NTEUser
 from ..utils.sdk.tajiduo import TajiduoClient
-from ..utils.name_convert import alias_to_role_name, role_name_to_role_id
+from ..utils.name_convert import alias_to_char_name, char_name_to_char_id
 from ..utils.sdk.tajiduo_model import TajiduoError, CharacterDetail
 
 
@@ -62,11 +62,11 @@ async def run_character_detail(bot: Bot, ev: Event, char_name: str) -> None:
     if not char_name:
         return await send_nte_notify(bot, ev, RoleMsg.USAGE_DETAIL)
 
-    role_name = alias_to_role_name(char_name)
-    if not role_name:
+    std_char_name = alias_to_char_name(char_name)
+    if not std_char_name:
         return await send_nte_notify(bot, ev, RoleMsg.CHAR_NOT_FOUND)
-    role_id = role_name_to_role_id(role_name)
-    if not role_id:
+    char_id = char_name_to_char_id(std_char_name)
+    if not char_id:
         return await send_nte_notify(bot, ev, RoleMsg.CHAR_NOT_FOUND)
 
     user = await NTEUser.get_active(ev.user_id, ev.bot_id)
@@ -78,7 +78,7 @@ async def run_character_detail(bot: Bot, ev: Event, char_name: str) -> None:
         return await send_nte_notify(bot, ev, RoleMsg.LOCAL_EMPTY)
     characters = [CharacterDetail.model_validate(item) for item in cached]
 
-    target = next((character for character in characters if character.id == role_id), None)
+    target = next((character for character in characters if character.id == char_id), None)
     if target is None:
         return await send_nte_notify(bot, ev, RoleMsg.CHAR_NOT_FOUND)
 

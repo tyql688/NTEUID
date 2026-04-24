@@ -1,89 +1,109 @@
-import json
-from pathlib import Path
+from pydantic import BaseModel, RootModel, ConfigDict, ValidationError
 
-from pydantic import BaseModel, ConfigDict
+from gsuid_core.logger import logger
 
-from .resource.RESOURCE_PATH import ROLE_META_PATH
+from .resource.RESOURCE_PATH import CHAR_META_PATH, USER_CHAR_ALIAS_PATH
 
 
-class RoleMeta(BaseModel):
+class CharMeta(BaseModel):
     model_config = ConfigDict(extra="ignore")
     name: str = ""
     aliases: list[str] = []
     avatar: str = ""
 
 
-role_alias_data: dict[str, list[str]] = {}
-role_id_to_name_data: dict[str, str] = {}
-role_id_to_avatar_data: dict[str, str] = {}
+class CharMetaFile(RootModel[dict[str, CharMeta]]):
+    pass
 
 
-def _load_meta(path: Path) -> dict[str, RoleMeta]:
+class UserCharAliasFile(RootModel[dict[str, list[str]]]):
+    pass
+
+
+char_alias_data: dict[str, list[str]] = {}
+char_id_to_name_data: dict[str, str] = {}
+char_id_to_avatar_data: dict[str, str] = {}
+
+
+def _load_char_meta_file() -> CharMetaFile:
+    return CharMetaFile.model_validate_json(CHAR_META_PATH.read_text(encoding="utf-8"))
+
+
+def load_user_char_aliases() -> UserCharAliasFile:
+    if not USER_CHAR_ALIAS_PATH.exists():
+        return UserCharAliasFile(root={})
     try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {}
-    if not isinstance(raw, dict):
-        return {}
-    return {str(role_id): RoleMeta.model_validate(entry) for role_id, entry in raw.items() if isinstance(entry, dict)}
+        return UserCharAliasFile.model_validate_json(USER_CHAR_ALIAS_PATH.read_text(encoding="utf-8"))
+    except ValidationError as e:
+        logger.warning(f"[NTEUID] {USER_CHAR_ALIAS_PATH} 解析失败，已忽略用户态别名: {e}")
+        return UserCharAliasFile(root={})
 
 
-def load_role_meta() -> None:
-    global role_alias_data, role_id_to_name_data, role_id_to_avatar_data
+def save_user_char_aliases(model: UserCharAliasFile) -> None:
+    USER_CHAR_ALIAS_PATH.write_text(
+        model.model_dump_json(indent=2) + "\n",
+        encoding="utf-8",
+    )
 
-    role_alias_data = {}
-    role_id_to_name_data = {}
-    role_id_to_avatar_data = {}
 
-    for role_id, meta in _load_meta(ROLE_META_PATH).items():
+def load_char_meta() -> None:
+    global char_alias_data, char_id_to_name_data, char_id_to_avatar_data
+
+    char_alias_data = {}
+    char_id_to_name_data = {}
+    char_id_to_avatar_data = {}
+
+    user_aliases = load_user_char_aliases().root
+
+    for char_id, meta in _load_char_meta_file().root.items():
         if not meta.name:
             continue
 
-        role_id_to_name_data[role_id] = meta.name
+        char_id_to_name_data[char_id] = meta.name
         if meta.avatar:
-            role_id_to_avatar_data[role_id] = meta.avatar
+            char_id_to_avatar_data[char_id] = meta.avatar
 
         aliases: list[str] = []
-        for alias in [*meta.aliases, meta.name]:
-            if not alias or alias.isdigit() or alias in aliases:
+        for alias in [*meta.aliases, *user_aliases.get(char_id, []), meta.name]:
+            if not alias or alias in aliases:
                 continue
             aliases.append(alias)
-        if meta.name not in role_alias_data:
-            role_alias_data[meta.name] = aliases
+        if meta.name not in char_alias_data:
+            char_alias_data[meta.name] = aliases
 
 
-load_role_meta()
+load_char_meta()
 
 
-def alias_to_role_name(role_name: str | None) -> str | None:
-    if not role_name:
+def alias_to_char_name(char_name: str | None) -> str | None:
+    if not char_name:
         return None
-    for name, aliases in role_alias_data.items():
-        if role_name in name or role_name in aliases:
+    for name, aliases in char_alias_data.items():
+        if char_name in name or char_name in aliases:
             return name
     return None
 
 
-def alias_to_role_name_list(role_name: str) -> list[str]:
-    for name, aliases in role_alias_data.items():
-        if role_name in name or role_name in aliases:
+def alias_to_char_name_list(char_name: str) -> list[str]:
+    for name, aliases in char_alias_data.items():
+        if char_name in name or char_name in aliases:
             return aliases
     return []
 
 
-def role_name_to_role_id(role_name: str | None) -> str | None:
-    role_name = alias_to_role_name(role_name)
-    if not role_name:
+def char_name_to_char_id(char_name: str | None) -> str | None:
+    char_name = alias_to_char_name(char_name)
+    if not char_name:
         return None
-    for role_id, name in role_id_to_name_data.items():
-        if name == role_name:
-            return role_id
+    for char_id, name in char_id_to_name_data.items():
+        if name == char_name:
+            return char_id
     return None
 
 
-def alias_to_role_id(role_name: str | None) -> str:
-    return role_name_to_role_id(role_name) or ""
+def alias_to_char_id(char_name: str | None) -> str:
+    return char_name_to_char_id(char_name) or ""
 
 
-def role_id_to_avatar_url(role_id: str) -> str:
-    return role_id_to_avatar_data.get(role_id, "")
+def char_id_to_avatar_url(char_id: str) -> str:
+    return char_id_to_avatar_data.get(char_id, "")

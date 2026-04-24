@@ -15,7 +15,11 @@ PLAYERINFO_PATH = MAIN_PATH / "playerinfo"
 # 角色资料
 RESOURCE_PATH = MAIN_PATH / "resource"
 STATIC_RESOURCE_PATH = Path(__file__).parents[2] / "resource"
-ROLE_META_PATH = STATIC_RESOURCE_PATH / "role_meta.json"
+CHAR_META_PATH = STATIC_RESOURCE_PATH / "char_meta.json"
+
+# 别名（用户态可写，与静态 CHAR_META_PATH 分离）
+ALIAS_PATH = MAIN_PATH / "alias"
+USER_CHAR_ALIAS_PATH = ALIAS_PATH / "char_alias.json"
 
 # 角色
 ROLE_PATH = MAIN_PATH / "role"
@@ -49,6 +53,7 @@ def init_dir():
         ROLE_SKILL_PATH,
         ROLE_CITY_SKILL_PATH,
         QR_PATH,
+        ALIAS_PATH,
     ]:
         path.mkdir(parents=True, exist_ok=True)
 
