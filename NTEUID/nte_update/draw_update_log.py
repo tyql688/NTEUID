@@ -107,9 +107,6 @@ async def draw_update_log_img() -> Union[bytes, str]:
         if not emojis:
             continue
 
-        # 清理文本
-        if ")" in text:
-            text = text.split(")")[0] + ")"
         text = text.replace("`", "")
 
         base_y = 475 + 80 * index
@@ -137,8 +134,15 @@ async def draw_update_log_img() -> Union[bytes, str]:
             img.paste(sprite, (x, paste_y), sprite)
             x += sprite.width + 12
 
-        # 绘制文本
+        # 绘制文本（超宽截断加省略号，避免溢出圆角条右边界）
         text_x = max(x, 160)
+        max_text_width = bg_x + bg_width - 30 - text_x
+        if img_draw.textlength(text, font=gs_font_30) > max_text_width:
+            ellipsis = "…"
+            ellipsis_w = img_draw.textlength(ellipsis, font=gs_font_30)
+            while text and img_draw.textlength(text, font=gs_font_30) + ellipsis_w > max_text_width:
+                text = text[:-1]
+            text = text + ellipsis
         img_draw.text((text_x, base_y + 40), text, "white", gs_font_30, "lm")
 
     return await convert_img(img)
