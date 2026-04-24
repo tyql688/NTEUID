@@ -105,7 +105,7 @@ def _draw_header(
     )
     canvas.alpha_composite(bg, (0, 0))
 
-    canvas.alpha_composite(make_head_avatar(user_avatar, frame_id="1025"), (18, 400))
+    canvas.alpha_composite(make_head_avatar(user_avatar), (18, 400))
 
     draw = ImageDraw.Draw(canvas)
     draw.text((280, 555), role_name, font=nte_font_42, fill=COLOR_TEXT, anchor="lm")
@@ -173,7 +173,7 @@ async def _draw_area_cards(canvas: Image.Image, y: int, areas: list[RoleHomeArea
 
         canvas.alpha_composite(mine_bg.resize((card_w, card_h), Image.Resampling.LANCZOS), (card_x, y))
 
-        percent = f"{min(area.total, 100)}%" if area.total else "--%"
+        percent = f"{min(round(area.progress / area.total * 100), 100)}%" if area.total else "--%"
         draw.text((card_x + card_w // 2, y + card_h - 65), percent, font=nte_font_30, fill=(0, 0, 0), anchor="mm")
         draw.text((card_x + card_w // 2, y + card_h - 30), area.name, font=nte_font_36, fill=COLOR_MUTED, anchor="mm")
 
