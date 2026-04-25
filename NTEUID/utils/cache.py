@@ -1,16 +1,9 @@
 import time
 import asyncio
-import inspect
-from typing import Any, TypeVar, ParamSpec
-from weakref import WeakValueDictionary
+from typing import Any
 from functools import wraps
 from collections import OrderedDict
-from collections.abc import Callable, Awaitable, MutableMapping
-
-P = ParamSpec("P")
-R = TypeVar("R")
-
-AsyncCacheKey = tuple[tuple[str, str], ...]
+from collections.abc import Callable
 
 
 def _now() -> float:
@@ -71,52 +64,38 @@ class TimedCache:
             self._store.pop(key, None)
 
 
-def timed_async_cache(
-    expiration: float,
-    condition: Callable[[R], bool] = bool,
-) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
+def timed_async_cache(expiration: float, condition: Callable[[Any], bool] = bool):
+    """异步函数 TTL 缓存。key 绑定到 `ClassName.method_name`（或函数名），不区分入参；
+    若哪天需要按入参分桶，直接把 key 算法改成带参数指纹即可。"""
     if expiration < 0:
         raise ValueError("timed_async_cache expiration must be >= 0")
 
-    def decorator(func: Callable[P, Awaitable[R]]) -> Callable[P, Awaitable[R]]:
-        sig = inspect.signature(func)
-        cache: dict[AsyncCacheKey, tuple[R, float]] = {}
-        locks: MutableMapping[AsyncCacheKey, asyncio.Lock] = WeakValueDictionary()
+    def decorator(func):
+        cache: dict[str, tuple[Any, float]] = {}
+        locks: dict[str, asyncio.Lock] = {}
 
         @wraps(func)
-        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-            # key 绑定完整调用参数，避免同一函数不同参数串用缓存。
-            key = _async_cache_key(sig, args, kwargs)
+        async def wrapper(*args, **kwargs):
+            cache_key = f"{args[0].__class__.__name__}.{func.__name__}" if args else func.__name__
             now = _now()
 
-            hit = cache.get(key)
+            hit = cache.get(cache_key)
             if hit is not None and now - hit[1] < expiration:
                 return hit[0]
 
-            lock = locks.get(key)
-            if lock is None:
-                lock = asyncio.Lock()
-                locks[key] = lock
-
+            lock = locks.setdefault(cache_key, asyncio.Lock())
             async with lock:
                 # 进入锁后重新取时间，避免排队期间用旧时间判断缓存有效期。
                 now = _now()
-                hit = cache.get(key)
+                hit = cache.get(cache_key)
                 if hit is not None and now - hit[1] < expiration:
                     return hit[0]
 
                 value = await func(*args, **kwargs)
                 if condition(value):
-                    cache[key] = (value, now)
+                    cache[cache_key] = (value, now)
                 return value
 
         return wrapper
 
     return decorator
-
-
-def _async_cache_key(sig: inspect.Signature, args: tuple[Any, ...], kwargs: dict[str, Any]) -> AsyncCacheKey:
-    # bind 让 f(1) 和 f(x=1) 得到同一个 key；repr 让 list/dict 这类不可哈希参数也能参与 key。
-    bound = sig.bind(*args, **kwargs)
-    bound.apply_defaults()
-    return tuple((name, repr(value)) for name, value in bound.arguments.items())

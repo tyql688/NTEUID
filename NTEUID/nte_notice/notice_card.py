@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 from PIL import Image, ImageOps, ImageDraw
 
@@ -13,7 +12,6 @@ from ..utils.image import (
     COLOR_BLUE,
     COLOR_DARK,
     COLOR_GRAY,
-    COLOR_NAVY,
     COLOR_TEXT,
     COLOR_GREEN,
     COLOR_MUTED,
@@ -31,6 +29,7 @@ from ..utils.image import (
     rounded_mask,
     draw_text_block,
     shrink_to_width,
+    get_nte_title_bg,
     download_pic_from_url,
 )
 from ..nte_config.prefix import NTE_PREFIX
@@ -42,8 +41,6 @@ WIDTH = 1080
 PADDING = 36
 GRID_GAP = 24
 CARD_RADIUS = 22
-TEXT_PATH = Path(__file__).parent / "texture2d"
-TITLE_BG_PATH = TEXT_PATH / "home-yihuan.webp"
 
 
 def _get_column_color(name: str):
@@ -68,14 +65,6 @@ async def _load_detail_image(url: str, max_width: int) -> Image.Image:
     except OSError:
         return Image.new("RGB", (max_width, 320), COLOR_GRAY)
     return shrink_to_width(image.convert("RGB"), max_width)
-
-
-async def _load_title_bg(width: int, height: int) -> Image.Image:
-    try:
-        image = Image.open(TITLE_BG_PATH).convert("RGB")
-    except OSError:
-        return Image.new("RGB", (width, height), COLOR_NAVY)
-    return ImageOps.fit(image, (width, height), method=Image.Resampling.LANCZOS, centering=(0.5, 0.0))
 
 
 def _extract_detail_blocks(post: NoticePost) -> list[tuple[str, str]]:
@@ -162,8 +151,7 @@ async def draw_notice_list_img(columns: dict[str, list[tuple[str, str, str, str]
     canvas = Image.new("RGBA", (WIDTH, canvas_height), COLOR_BG)
     draw = ImageDraw.Draw(canvas)
 
-    title_bg = await _load_title_bg(WIDTH, 152)
-    canvas.paste(title_bg, (0, 0))
+    canvas.paste(get_nte_title_bg(WIDTH, 152), (0, 0))
     overlay = Image.new("RGBA", (WIDTH, 152), COLOR_OVERLAY)
     canvas.alpha_composite(overlay, (0, 0))
     draw = ImageDraw.Draw(canvas)

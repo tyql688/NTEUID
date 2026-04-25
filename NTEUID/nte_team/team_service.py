@@ -6,8 +6,7 @@ from gsuid_core.models import Event
 
 from .team_card import draw_team_img
 from ..utils.msgs import TeamMsg, send_nte_notify
-from ..utils.session import ensure_tajiduo_client
-from ..utils.database import NTEUser
+from ..utils.sdk.tajiduo import tajiduo_web
 from ..utils.name_convert import alias_to_char_name, char_name_to_char_id
 from ..utils.sdk.tajiduo_model import TajiduoError, TeamRecommendation
 
@@ -38,21 +37,10 @@ async def run_team(bot: Bot, ev: Event, char_name: str) -> None:
     if not char_id:
         return await send_nte_notify(bot, ev, TeamMsg.CHAR_NOT_FOUND)
 
-    user = await NTEUser.get_active(ev.user_id, ev.bot_id)
-    if user is None:
-        return await send_nte_notify(bot, ev, TeamMsg.NOT_LOGGED_IN)
-
     try:
-        client = await ensure_tajiduo_client(user)
+        recs = await tajiduo_web.get_team_recommendations()
     except TajiduoError as error:
-        await NTEUser.mark_invalid_by_cookie(user.cookie, "refresh 失败")
-        logger.warning(f"[NTE配队] 账号 {user.center_uid} 刷新失败: {error.message}")
-        return await send_nte_notify(bot, ev, TeamMsg.LOGIN_EXPIRED)
-
-    try:
-        recs = await client.get_team_recommendations()
-    except TajiduoError as error:
-        logger.warning(f"[NTE配队] 账号 {user.center_uid} 拉取失败: {error.message}")
+        logger.warning(f"[NTE配队] 拉取失败: {error.message}")
         return await send_nte_notify(bot, ev, TeamMsg.LOAD_FAILED)
 
     if not recs:

@@ -372,6 +372,12 @@ def get_nte_bg(w: int, h: int, bg: str = "bg") -> Image.Image:
     return crop_center_img(img, w, h)
 
 
+def get_nte_title_bg(width: int, height: int) -> Image.Image:
+    """异环 home banner 切到指定尺寸（顶部居中），用作页面顶 banner 底图。"""
+    image = Image.open(TEXT_PATH / "home-yihuan.webp").convert("RGB")
+    return ImageOps.fit(image, (width, height), method=Image.Resampling.LANCZOS, centering=(0.5, 0.0))
+
+
 def get_footer():
     return Image.open(TEXT_PATH / "footer.png")
 

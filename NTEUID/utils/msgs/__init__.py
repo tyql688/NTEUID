@@ -77,8 +77,6 @@ class RoleMsg:
 class TeamMsg:
     from ...nte_config.prefix import NTE_PREFIX
 
-    NOT_LOGGED_IN = f"{CommonMsg.NOT_LOGGED_IN}，请先发送【{NTE_PREFIX}登录】"
-    LOGIN_EXPIRED = CommonMsg.LOGIN_EXPIRED
     LOAD_FAILED = "配队推荐暂时无法获取，请稍后再试"
     EMPTY = "当前没有可用的配队推荐"
     NO_RECOMMENDATION = "当前没有该角色的配队推荐"

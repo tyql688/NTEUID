@@ -369,19 +369,6 @@ class TajiduoClient(_TajiduoBase):
         )
         return _parse(VehicleList, _expect_dict(data, "载具数据格式错误"), "载具数据格式错误")
 
-    async def get_team_recommendations(self) -> List[TeamRecommendation]:
-        """异环配队推荐列表；APP 内嵌 `webstatic.tajiduo.com/bbs/team-rec/` 页面对应此接口。"""
-        data = await self._request(
-            "/apihub/awapi/yh/team",
-            method="GET",
-            headers=self._authed_headers(),
-        )
-        return _parse(
-            TeamRecommendation,
-            _expect_dict_list(data, "配队推荐格式错误"),
-            "配队推荐格式错误",
-        )
-
     async def get_user_tasks(self, gid: int = 1) -> UserTasks:
         """任务中心。`task_list1` = 每日任务（签到/浏览/点赞/分享），`task_list2` = 成就任务。"""
         data = await self._request(
@@ -465,6 +452,18 @@ class TajiduoClient(_TajiduoBase):
 
 class TajiduoWebClient(_TajiduoBase):
     USER_AGENT = TAJIDUO_WEB_USER_AGENT
+
+    @timed_async_cache(21600)
+    async def get_team_recommendations(self) -> List[TeamRecommendation]:
+        """异环配队推荐列表；APP 内嵌 `webstatic.tajiduo.com/bbs/team-rec/` 页面对应此接口。
+        虽然路径在 `/awapi/`，但服务端不做鉴权，匿名调用即可。
+        官方推荐变动很慢，缓存 6 小时。"""
+        data = await self._request("/apihub/awapi/yh/team", method="GET")
+        return _parse(
+            TeamRecommendation,
+            _expect_dict_list(data, "配队推荐格式错误"),
+            "配队推荐格式错误",
+        )
 
     @timed_async_cache(86400)
     async def get_notice_column_id(self) -> int:

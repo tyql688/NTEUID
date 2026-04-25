@@ -8,196 +8,282 @@ from PIL import Image, ImageOps, ImageDraw
 from gsuid_core.utils.image.convert import convert_img
 
 from ..utils.image import (
-    COLOR_BG,
-    COLOR_BLUE,
-    COLOR_GRAY,
-    COLOR_NAVY,
-    COLOR_MUTED,
-    COLOR_TITLE,
     COLOR_WHITE,
     COLOR_OVERLAY,
     COLOR_SUBTEXT,
-    draw_card,
+    add_footer,
     cache_name,
-    rounded_mask,
-    shrink_to_width,
-    paste_circle_image,
+    get_nte_bg,
+    get_nte_title_bg,
     download_pic_from_url,
 )
 from ..utils.fonts.nte_fonts import (
-    nte_font_18,
-    nte_font_20,
     nte_font_22,
-    nte_font_28,
     nte_font_42,
+    nte_font_origin,
 )
 from ..utils.sdk.tajiduo_model import TeamRecommendation
 from ..utils.resource.RESOURCE_PATH import TEAM_PATH
 
 WIDTH = 1080
 PADDING = 36
-CARD_GAP = 20
-CARD_RADIUS = 22
 HEADER_HEIGHT = 152
-CARD_INNER_PADDING = 24
+FOOTER_RESERVE = 80  # 底部给 add_footer 留位（footer 贴底 20px + 自身高 47px + 余量）
+TEXTURE_PATH = Path(__file__).parent / "texture2d"
 
-ICON_SIZE = 110
-CONTENT_WIDTH = WIDTH - PADDING * 2 - CARD_INNER_PADDING * 2
-IMAGE_GAP = 12
-TITLE_BG_PATH = Path(__file__).parent.parent / "nte_notice" / "texture2d" / "home-yihuan.webp"
+# vw 系数：官方 design-width=390，本图渲染宽 1080；px = vw_v * (1080 / 390)
+SCALE = 1080 / 390
+SECTION_GAP = round(20 * SCALE)
+HEADER_IMAGE_GAP = round(10 * SCALE)
+TITLE_SUB_GAP = round(2 * SCALE)
+ICON_TEXT_GAP = round(2 * SCALE)
+ICON_SIZE = round(18 * SCALE)
+TITLE_FONT_SIZE = round(18 * SCALE)
+SUBTITLE_FONT_SIZE = max(10, round(4 * SCALE))
+DESC_FONT_SIZE = round(13 * SCALE)
+DESC_BOX_PAD_X = round(6 * SCALE)
+DESC_BOX_PAD_Y = round(10 * SCALE)
+DESC_BOX_GAP = round(10 * SCALE)
+DESC_LINE_GAP = round(3 * SCALE)
+DESC_RADIUS_SMALL = round(2 * SCALE)
+DESC_RADIUS_LARGE = round(12 * SCALE)
+INTER_REC_GAP = round(28 * SCALE)
+PAGE_PAD_X = round(15 * SCALE)
+CONTENT_WIDTH = WIDTH - PAGE_PAD_X * 2
+DESC_TEXT_WIDTH = CONTENT_WIDTH - DESC_BOX_PAD_X * 2
+
+COLOR_DESC_BG = (220, 220, 220)
+COLOR_DESC_TEXT = (84, 84, 84)
+COLOR_SECTION_TITLE = (240, 240, 245)
+COLOR_SUBTITLE_GRAY = (177, 177, 177)
+SUBTITLE_TEXT = "CHARACTER ATTRIBUTE"
+
+title_font = nte_font_origin(TITLE_FONT_SIZE)
+subtitle_font = nte_font_origin(SUBTITLE_FONT_SIZE)
+desc_font = nte_font_origin(DESC_FONT_SIZE)
+
+DESC_LINE_HEIGHT = sum(desc_font.getmetrics())
+SECTION_HEADER_HEIGHT = max(
+    ICON_SIZE,
+    sum(title_font.getmetrics()) + TITLE_SUB_GAP + sum(subtitle_font.getmetrics()),
+)
+
+
+def _load_section_icon(path: Path) -> Image.Image:
+    """官方图标是浅色主题下的深色版本；nte 暗底上整体反 RGB（保留 alpha）后再用。"""
+    image = Image.open(path).convert("RGBA").resize((ICON_SIZE, ICON_SIZE))
+    r, g, b, a = image.split()
+    rgb = ImageOps.invert(Image.merge("RGB", (r, g, b)))
+    return Image.merge("RGBA", (*rgb.split(), a))
+
+
+ICON_STAR = _load_section_icon(TEXTURE_PATH / "section_icon_star.png")
+ICON_CHEST = _load_section_icon(TEXTURE_PATH / "section_icon_chest.png")
+
+_IMAGE_SECTIONS: tuple[tuple[str, Image.Image], ...] = (
+    ("角色卡片", ICON_STAR),
+    ("配队推荐", ICON_STAR),
+    ("异能加点", ICON_STAR),
+    ("弧盘推荐", ICON_CHEST),
+    ("空幕推荐", ICON_CHEST),
+)
 
 
 @dataclass(slots=True)
-class PreparedRecommendation:
-    recommendation: TeamRecommendation
-    icon: Image.Image | None
-    images: list[Image.Image]
-    header_height: int
-    card_height: int
-    has_image_error: bool
+class Section:
+    title: str
+    icon: Image.Image
+    image: Image.Image | None = None
+    desc_lines: list[str] | None = None
+
+    @property
+    def body_height(self) -> int:
+        if self.image is not None:
+            return self.image.height
+        assert self.desc_lines is not None
+        return _desc_box_height(len(self.desc_lines))
 
 
-async def _load_remote(url: str, cache_key: str) -> Image.Image | None:
-    if not url:
-        return None
+def _desc_box_height(line_count: int) -> int:
+    text_h = line_count * DESC_LINE_HEIGHT + max(0, line_count - 1) * DESC_LINE_GAP
+    return text_h + DESC_BOX_PAD_Y * 2 + DESC_BOX_GAP
+
+
+def _fit_to_width(image: Image.Image, width: int) -> Image.Image:
+    """官方 `w-full` 等价：等比缩放到目标宽度（无论原图更大或更小）。"""
+    if image.width == width:
+        return image
+    ratio = width / image.width
+    return image.resize((width, int(image.height * ratio)), Image.Resampling.LANCZOS)
+
+
+def _wrap_text(draw: ImageDraw.ImageDraw, text: str, max_width: int) -> list[str]:
+    lines: list[str] = []
+    for raw_line in text.splitlines():
+        current = ""
+        for ch in raw_line:
+            trial = f"{current}{ch}"
+            if current and draw.textlength(trial, font=desc_font) > max_width:
+                lines.append(current)
+                current = ch
+            else:
+                current = trial
+        lines.append(current)
+    return lines
+
+
+async def _load_section_image(url: str) -> Image.Image | None:
     try:
-        return await download_pic_from_url(
-            TEAM_PATH,
-            url,
-            name=cache_name(cache_key, url),
-        )
+        image = await download_pic_from_url(TEAM_PATH, url, name=cache_name("team-section", url))
     except OSError:
         return None
+    return _fit_to_width(image.convert("RGBA"), CONTENT_WIDTH)
 
 
-def _load_title_bg(width: int, height: int) -> Image.Image:
-    try:
-        image = Image.open(TITLE_BG_PATH).convert("RGB")
-    except OSError:
-        return Image.new("RGB", (width, height), COLOR_NAVY)
-    return ImageOps.fit(
-        image,
-        (width, height),
-        method=Image.Resampling.LANCZOS,
-        centering=(0.5, 0.0),
-    )
-
-
-async def _prepare_recommendation(
-    recommendation: TeamRecommendation,
-) -> PreparedRecommendation:
-    icon = await _load_remote(recommendation.icon, "team-icon")
-
-    images: list[Image.Image] = []
-    for image_url in recommendation.imgs:
-        image = await _load_remote(image_url, "team-gallery")
+async def _prepare_sections(
+    rec: TeamRecommendation,
+    measure_draw: ImageDraw.ImageDraw,
+) -> list[Section]:
+    sections: list[Section] = []
+    for index, url in enumerate(rec.imgs[: len(_IMAGE_SECTIONS)]):
+        title, icon = _IMAGE_SECTIONS[index]
+        image = await _load_section_image(url)
         if image is None:
             continue
-        images.append(shrink_to_width(image.convert("RGBA"), CONTENT_WIDTH))
+        sections.append(Section(title=title, icon=icon, image=image))
+    if rec.desc:
+        sections.append(
+            Section(
+                title="攻略详情",
+                icon=ICON_CHEST,
+                desc_lines=_wrap_text(measure_draw, rec.desc, DESC_TEXT_WIDTH),
+            )
+        )
+    return sections
 
-    header_height = 24 + ICON_SIZE + 24
-    card_height = header_height
-    has_image_error = bool(recommendation.imgs) and not images
 
-    if images:
-        card_height += IMAGE_GAP
-        card_height += sum(image.height for image in images)
-        card_height += IMAGE_GAP * (len(images) - 1)
-        card_height += 24
-    elif has_image_error:
-        card_height += 72
+def _recommendation_height(sections: list[Section]) -> int:
+    if not sections:
+        return 0
+    base = SECTION_HEADER_HEIGHT + HEADER_IMAGE_GAP
+    return sum(base + section.body_height for section in sections) + (len(sections) - 1) * SECTION_GAP
 
-    return PreparedRecommendation(
-        recommendation=recommendation,
-        icon=icon,
-        images=images,
-        header_height=header_height,
-        card_height=card_height,
-        has_image_error=has_image_error,
+
+def _draw_section_header(
+    canvas: Image.Image,
+    draw: ImageDraw.ImageDraw,
+    section: Section,
+    xy: tuple[int, int],
+) -> None:
+    """[icon | 中文标题 / CHARACTER ATTRIBUTE]，anchor='lt' 让文字与图标顶对齐。"""
+    x, y = xy
+    canvas.alpha_composite(section.icon, (x, y))
+    text_x = x + ICON_SIZE + ICON_TEXT_GAP
+    draw.text((text_x, y), section.title, font=title_font, fill=COLOR_SECTION_TITLE, anchor="lt")
+    title_bottom = draw.textbbox((text_x, y), section.title, font=title_font, anchor="lt")[3]
+    draw.text(
+        (text_x, title_bottom + TITLE_SUB_GAP),
+        SUBTITLE_TEXT,
+        font=subtitle_font,
+        fill=COLOR_SUBTITLE_GRAY,
+        anchor="lt",
     )
+
+
+def _asymmetric_rounded_mask(
+    size: tuple[int, int],
+    radii: tuple[int, int, int, int],
+) -> Image.Image:
+    """Per-corner radii: (top-left, top-right, bottom-right, bottom-left)，对应 CSS 简写顺序。"""
+    w, h = size
+    tl, tr, br, bl = radii
+    mask = Image.new("L", (w, h), 0)
+    d = ImageDraw.Draw(mask)
+    d.rectangle((0, 0, w, h), fill=255)
+    if tl > 0:
+        d.rectangle((0, 0, tl, tl), fill=0)
+        d.pieslice((0, 0, tl * 2, tl * 2), 180, 270, fill=255)
+    if tr > 0:
+        d.rectangle((w - tr, 0, w, tr), fill=0)
+        d.pieslice((w - tr * 2, 0, w, tr * 2), 270, 360, fill=255)
+    if br > 0:
+        d.rectangle((w - br, h - br, w, h), fill=0)
+        d.pieslice((w - br * 2, h - br * 2, w, h), 0, 90, fill=255)
+    if bl > 0:
+        d.rectangle((0, h - bl, bl, h), fill=0)
+        d.pieslice((0, h - bl * 2, bl * 2, h), 90, 180, fill=255)
+    return mask
+
+
+def _draw_desc_box(
+    canvas: Image.Image,
+    desc_lines: list[str],
+    xy: tuple[int, int],
+) -> None:
+    x, y = xy
+    text_h = len(desc_lines) * DESC_LINE_HEIGHT + max(0, len(desc_lines) - 1) * DESC_LINE_GAP
+    box_w = CONTENT_WIDTH
+    box_h = text_h + DESC_BOX_PAD_Y * 2
+    fill = Image.new("RGBA", (box_w, box_h), COLOR_DESC_BG + (255,))
+    mask = _asymmetric_rounded_mask(
+        (box_w, box_h),
+        (DESC_RADIUS_SMALL, DESC_RADIUS_LARGE, DESC_RADIUS_SMALL, DESC_RADIUS_LARGE),
+    )
+    canvas.paste(fill, (x, y), mask)
+    text_draw = ImageDraw.Draw(canvas)
+    text_y = y + DESC_BOX_PAD_Y
+    for line in desc_lines:
+        text_draw.text((x + DESC_BOX_PAD_X, text_y), line, font=desc_font, fill=COLOR_DESC_TEXT)
+        text_y += DESC_LINE_HEIGHT + DESC_LINE_GAP
+
+
+def _draw_sections(
+    canvas: Image.Image,
+    draw: ImageDraw.ImageDraw,
+    sections: list[Section],
+    y: int,
+) -> int:
+    for index, section in enumerate(sections):
+        if index > 0:
+            y += SECTION_GAP
+        _draw_section_header(canvas, draw, section, (PAGE_PAD_X, y))
+        y += SECTION_HEADER_HEIGHT + HEADER_IMAGE_GAP
+        if section.image is not None:
+            image_x = PAGE_PAD_X + (CONTENT_WIDTH - section.image.width) // 2
+            canvas.alpha_composite(section.image, (image_x, y))
+            y += section.image.height
+        else:
+            assert section.desc_lines is not None
+            _draw_desc_box(canvas, section.desc_lines, (PAGE_PAD_X, y))
+            y += _desc_box_height(len(section.desc_lines))
+    return y
 
 
 async def draw_team_img(
     recommendations: list[TeamRecommendation],
     role_name: str,
 ):
-    ordered = list(recommendations)
-    prepared = [await _prepare_recommendation(item) for item in ordered]
-    total_height = (
-        HEADER_HEIGHT
-        + PADDING
-        + sum(item.card_height for item in prepared)
-        + max(0, len(prepared) - 1) * CARD_GAP
-        + PADDING
+    measure_draw = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
+    sections_per_rec = [await _prepare_sections(rec, measure_draw) for rec in recommendations]
+
+    body_height = (
+        sum(_recommendation_height(secs) for secs in sections_per_rec)
+        + max(0, len(sections_per_rec) - 1) * INTER_REC_GAP
     )
-
-    subtitle = f"{role_name}  ·  官方推荐"
-    if len(ordered) > 1:
-        subtitle = f"{role_name}  ·  共 {len(ordered)} 套方案"
-
-    canvas = Image.new("RGBA", (WIDTH, total_height), COLOR_BG)
-    title_bg = _load_title_bg(WIDTH, HEADER_HEIGHT)
-    canvas.paste(title_bg, (0, 0))
+    total_height = HEADER_HEIGHT + PADDING + body_height + FOOTER_RESERVE
+    canvas = get_nte_bg(WIDTH, total_height).convert("RGBA")
+    canvas.paste(get_nte_title_bg(WIDTH, HEADER_HEIGHT), (0, 0))
     canvas.alpha_composite(Image.new("RGBA", (WIDTH, HEADER_HEIGHT), COLOR_OVERLAY), (0, 0))
     draw = ImageDraw.Draw(canvas)
     title_right = WIDTH - PADDING
     draw.text((title_right, 34), "异环配队", font=nte_font_42, fill=COLOR_WHITE, anchor="ra")
-    draw.text((title_right, 96), subtitle, font=nte_font_22, fill=COLOR_SUBTEXT, anchor="ra")
+    draw.text((title_right, 96), f"{role_name}  ·  官方推荐", font=nte_font_22, fill=COLOR_SUBTEXT, anchor="ra")
+
     y = HEADER_HEIGHT + PADDING
+    for index, sections in enumerate(sections_per_rec):
+        if index > 0:
+            y += INTER_REC_GAP
+        y = _draw_sections(canvas, draw, sections, y)
 
-    for index, item in enumerate(prepared, start=1):
-        recommendation = item.recommendation
-        card_height = item.card_height
-        draw_card(draw, (PADDING, y, WIDTH - PADDING, y + card_height), radius=CARD_RADIUS)
-        if item.icon is not None:
-            paste_circle_image(canvas, item.icon, (PADDING + 24, y + 24), ICON_SIZE)
-        else:
-            draw.ellipse(
-                (PADDING + 24, y + 24, PADDING + 24 + ICON_SIZE, y + 24 + ICON_SIZE),
-                fill=COLOR_GRAY,
-            )
-
-        text_left = PADDING + 24 + ICON_SIZE + 24
-        draw.text((text_left, y + 26), recommendation.name, font=nte_font_28, fill=COLOR_TITLE)
-        draw.rounded_rectangle(
-            (text_left, y + 64, text_left + 112, y + 94),
-            radius=12,
-            fill=(232, 240, 250),
-        )
-        draw.text(
-            (text_left + 56, y + 79), f"角色 #{recommendation.id}", font=nte_font_18, fill=COLOR_BLUE, anchor="mm"
-        )
-        if len(prepared) > 1:
-            tag_right = WIDTH - PADDING - 24
-            tag_left = tag_right - 112
-            draw.rounded_rectangle(
-                (tag_left, y + 28, tag_right, y + 60),
-                radius=14,
-                fill=(244, 246, 248),
-            )
-            draw.text(
-                ((tag_left + tag_right) // 2, y + 44),
-                f"方案 {index}",
-                font=nte_font_20,
-                fill=COLOR_MUTED,
-                anchor="mm",
-            )
-
-        content_top = y + item.header_height
-        if item.images:
-            image_y = content_top + IMAGE_GAP
-            for image in item.images:
-                image_left = PADDING + CARD_INNER_PADDING + (CONTENT_WIDTH - image.width) // 2
-                canvas.paste(image, (image_left, image_y), rounded_mask((image.width, image.height), 18))
-                image_y += image.height + IMAGE_GAP
-        elif item.has_image_error:
-            draw.text(
-                (PADDING + 24, content_top + 20),
-                "配图加载失败",
-                font=nte_font_20,
-                fill=COLOR_MUTED,
-            )
-
-        y += card_height + CARD_GAP
-
+    add_footer(canvas)
     return await convert_img(canvas)
