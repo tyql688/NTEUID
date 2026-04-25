@@ -206,8 +206,11 @@ class RoleHome(_TajiduoModel):
     role_login_days: int = Field(0, alias="roleloginDays")
     charid_cnt: int = Field(0, alias="charidCnt")
     stamina_value: int = Field(0, alias="staminaValue")
+    stamina_max_value: int = Field(0, alias="staminaMaxValue")
     city_stamina_value: int = Field(0, alias="citystaminaValue")
+    city_stamina_max_value: int = Field(0, alias="citystaminaMaxValue")
     day_value: int = Field(0, alias="dayvalue")
+    week_copies_remain_cnt: int = Field(0, alias="weekcopiesremainCnt")
     achieve_progress: Optional[RoleHomeAchieveProgress] = Field(None, alias="achieveProgress")
     area_progress: List[RoleHomeAreaProgress] = Field(default_factory=list, alias="areaProgress")
     realestate: Optional[RoleHomeRealEstate] = None

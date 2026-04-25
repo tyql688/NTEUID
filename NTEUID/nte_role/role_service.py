@@ -17,6 +17,7 @@ from .role_text import (
 from .role_cache import load_role_characters_cache, save_role_characters_cache
 from ..utils.msgs import RoleMsg, send_nte_notify
 from .explore_card import draw_explore_img
+from .realtime_card import draw_realtime_img
 from ..utils.session import ensure_tajiduo_client
 from ..utils.database import NTEUser
 from ..utils.sdk.tajiduo import TajiduoClient
@@ -139,6 +140,21 @@ async def run_realestate(bot: Bot, ev: Event) -> None:
         return await send_nte_notify(bot, ev, RoleMsg.EMPTY)
 
     await bot.send(format_realestate(houses))
+
+
+async def run_realtime(bot: Bot, ev: Event) -> None:
+    ctx = await _ensure_ctx(bot, ev, "实时信息")
+    if ctx is None:
+        return
+    user, client, role_id = ctx
+
+    try:
+        home = await client.get_role_home(role_id)
+    except TajiduoError as error:
+        logger.warning(f"[NTE实时信息] 账号 {user.center_uid} 拉取失败: {error.message}")
+        return await send_nte_notify(bot, ev, RoleMsg.LOAD_FAILED)
+
+    await bot.send(await draw_realtime_img(ev, home, user.role_name))
 
 
 async def run_explore(bot: Bot, ev: Event) -> None:
