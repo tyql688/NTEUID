@@ -9,7 +9,6 @@ from gsuid_core.models import Event
 from .role_card import draw_role_card_img
 from .role_text import (
     format_vehicles,
-    format_realestate,
     format_achievement,
     format_refresh_summary,
     format_character_detail,
@@ -20,6 +19,7 @@ from .explore_card import draw_explore_img
 from .realtime_card import draw_realtime_img
 from ..utils.session import ensure_tajiduo_client
 from ..utils.database import NTEUser
+from .realestate_card import draw_realestate_img
 from ..utils.sdk.tajiduo import TajiduoClient
 from ..utils.name_convert import alias_to_char_name, char_name_to_char_id
 from ..utils.sdk.tajiduo_model import TajiduoError, CharacterDetail
@@ -139,7 +139,7 @@ async def run_realestate(bot: Bot, ev: Event) -> None:
     if not houses:
         return await send_nte_notify(bot, ev, RoleMsg.EMPTY)
 
-    await bot.send(format_realestate(houses))
+    await bot.send(await draw_realestate_img(ev, houses, user.role_name))
 
 
 async def run_realtime(bot: Bot, ev: Event) -> None:
