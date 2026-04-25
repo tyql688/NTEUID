@@ -3,6 +3,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
 from .role_service import (
+    run_explore,
     run_vehicles,
     run_role_home,
     run_realestate,
@@ -18,6 +19,7 @@ sv_nte_role_detail = SV("nte角色详情")
 sv_nte_achievement = SV("nte成就进度")
 sv_nte_realestate = SV("nte房产")
 sv_nte_vehicle = SV("nte载具")
+sv_nte_explore = SV("nte探索详情")
 
 
 @sv_nte_role_home.on_fullmatch(("查询", "卡片", "角色", "信息"), block=True)
@@ -64,3 +66,8 @@ async def nte_realestate(bot: Bot, ev: Event):
 @sv_nte_vehicle.on_fullmatch(("我的载具", "载具"))
 async def nte_vehicle(bot: Bot, ev: Event):
     await run_vehicles(bot, ev)
+
+
+@sv_nte_explore.on_fullmatch(("探索详情", "探索度", "探索"))
+async def nte_explore(bot: Bot, ev: Event):
+    await run_explore(bot, ev)
