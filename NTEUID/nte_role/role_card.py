@@ -116,15 +116,25 @@ def _draw_header(
     canvas.alpha_composite(level_img, (lv_cx - level_img.width // 2, lv_cy - level_img.height // 2))
     draw.text((lv_cx, lv_cy), str(home.lev), font=nte_font_42, fill=COLOR_TEXT, anchor="mm")
 
+    # 活跃天数：right-aligned 贴在 level 圆章左侧，数字大号 + 标签小号 + 一道分隔竖线作装饰
+    sep_x = lv_cx - level_img.width // 2 - 12
+    draw.line([(sep_x, lv_cy - 36), (sep_x, lv_cy + 36)], fill=COLOR_ACCENT, width=2)
+    days_right = sep_x - 18
+    days_y = lv_cy + 14
+    draw.text(
+        (days_right, days_y - 4), str(home.role_login_days), font=nte_font_50, fill=COLOR_ACCENT_SOFT, anchor="rb"
+    )
+    draw.text((days_right, days_y + 4), "活跃天数", font=nte_font_22, fill=COLOR_TEXT, anchor="rt")
+
 
 def _draw_stats(canvas: Image.Image, y: int, home: RoleHome) -> int:
     achieve_cnt = home.achieve_progress.achievement_cnt if home.achieve_progress else 0
     vehicle_own = home.vehicle.own_cnt if home.vehicle else 0
-    realestate_total = home.realestate.total if home.realestate else 0
+    realestate_own = home.realestate.own_cnt if home.realestate else 0
     cells = [
         (str(achieve_cnt), "达成成就"),
-        (str(home.charid_cnt), "拥有角色"),
-        (str(realestate_total), "房产数量"),
+        (str(home.tycoon_level), "大亨等级"),
+        (str(realestate_own), "房产数量"),
         (str(vehicle_own), "载具数量"),
     ]
     # 数字黑压 card_1.png 白条上半，标签白压 stats.png 深条下半
@@ -145,17 +155,19 @@ def _draw_stats(canvas: Image.Image, y: int, home: RoleHome) -> int:
 async def _draw_area_cards(canvas: Image.Image, y: int, areas: list[RoleHomeAreaProgress]) -> int:
     if not areas:
         return y
-    display = areas[:AREA_COLS]
     inner = canvas.width - PADDING * 2
     card_w = (inner - GRID_GAP * (AREA_COLS - 1)) // AREA_COLS
     card_h = AREA_CARD_HEIGHT
+    rows = (len(areas) + AREA_COLS - 1) // AREA_COLS
 
     exp_bg_raw = Image.open(CARD_TEX_PATH / "exp_bg.png").convert("RGBA")
     exp_mask = Image.open(CARD_TEX_PATH / "exp_mask.png")
 
     draw = ImageDraw.Draw(canvas)
-    for index, area in enumerate(display):
-        card_x = PADDING + index * (card_w + GRID_GAP)
+    for index, area in enumerate(areas):
+        row, col = divmod(index, AREA_COLS)
+        card_x = PADDING + col * (card_w + GRID_GAP)
+        card_y = y + row * (card_h + GRID_GAP)
 
         # DNAUID 套路：mask/bg 都用原生尺寸，组装完再 resize 到 card slot
         mine_bg = exp_bg_raw.copy()
@@ -171,13 +183,15 @@ async def _draw_area_cards(canvas: Image.Image, y: int, areas: list[RoleHomeArea
         except OSError:
             pass
 
-        canvas.alpha_composite(mine_bg.resize((card_w, card_h), Image.Resampling.LANCZOS), (card_x, y))
+        canvas.alpha_composite(mine_bg.resize((card_w, card_h), Image.Resampling.LANCZOS), (card_x, card_y))
 
         percent = f"{min(round(area.progress / area.total * 100), 100)}%" if area.total else "--%"
-        draw.text((card_x + card_w // 2, y + card_h - 65), percent, font=nte_font_30, fill=(0, 0, 0), anchor="mm")
-        draw.text((card_x + card_w // 2, y + card_h - 30), area.name, font=nte_font_36, fill=COLOR_MUTED, anchor="mm")
+        draw.text((card_x + card_w // 2, card_y + card_h - 65), percent, font=nte_font_30, fill=(0, 0, 0), anchor="mm")
+        draw.text(
+            (card_x + card_w // 2, card_y + card_h - 30), area.name, font=nte_font_36, fill=COLOR_MUTED, anchor="mm"
+        )
 
-    return y + card_h
+    return y + rows * card_h + (rows - 1) * GRID_GAP
 
 
 async def _build_char_stats(
@@ -282,15 +296,17 @@ async def draw_role_card_img(
     role_name: str,
 ):
     chars = await _build_char_stats(home, characters)
-    rows = max(1, (len(chars) + CHAR_COLS - 1) // CHAR_COLS)
+    char_rows = max(1, (len(chars) + CHAR_COLS - 1) // CHAR_COLS)
+    area_rows = max(1, (len(home.area_progress) + AREA_COLS - 1) // AREA_COLS)
     canvas_height = (
         HEADER_HEIGHT
         + SECTION_TITLE_HEIGHT
-        + AREA_CARD_HEIGHT
+        + area_rows * AREA_CARD_HEIGHT
+        + (area_rows - 1) * GRID_GAP
         + SECTION_GAP
         + SECTION_TITLE_HEIGHT
-        + rows * CHAR_CARD_HEIGHT
-        + (rows - 1) * GRID_GAP
+        + char_rows * CHAR_CARD_HEIGHT
+        + (char_rows - 1) * GRID_GAP
         + SECTION_GAP
         + 80
     )
