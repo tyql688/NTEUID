@@ -112,9 +112,9 @@
                 "need_admin": false
             },
             {
-                "name": "实时信息",
+                "name": "体力",
                 "desc": "本性像素 / 都市活力 / 活跃度 / 周本次数",
-                "eg": "实时信息",
+                "eg": "体力",
                 "need_ck": true,
                 "need_sk": false,
                 "need_admin": false

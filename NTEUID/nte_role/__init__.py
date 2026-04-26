@@ -75,6 +75,6 @@ async def nte_explore(bot: Bot, ev: Event):
     await run_explore(bot, ev)
 
 
-@sv_nte_realtime.on_fullmatch(("实时信息", "体力", "活力", "mr"))
+@sv_nte_realtime.on_fullmatch(("体力", "活力", "mr"))
 async def nte_realtime(bot: Bot, ev: Event):
     await run_realtime(bot, ev)
