@@ -11,7 +11,6 @@ if TYPE_CHECKING:
         RoleHome,
         VehicleList,
         CharacterDetail,
-        AchievementProgress,
     )
 
 
@@ -58,21 +57,6 @@ def format_refresh_summary(characters: list["CharacterDetail"]) -> str:
             names = "、".join(c.name for c in buckets[q] if c.name)
             lines.append(f"{q.label}（{len(buckets[q])}）：{names}")
     lines.append(f"使用 `{NTE_PREFIX}<角色名>面板` 查看详情")
-    return "\n".join(lines)
-
-
-def format_achievement(progress: "AchievementProgress") -> str:
-    head_parts = [f"成就 {progress.achievement_cnt}/{progress.total}"]
-    if progress.gold_umd_cnt:
-        head_parts.append(f"金 {progress.gold_umd_cnt}")
-    if progress.silver_umd_cnt:
-        head_parts.append(f"银 {progress.silver_umd_cnt}")
-    if progress.bronze_umd_cnt:
-        head_parts.append(f"铜 {progress.bronze_umd_cnt}")
-    lines = [" · ".join(head_parts)]
-    categories = progress.detail
-    detail_lines = [f"{_INDENT}{cat.name} {cat.progress}/{cat.total}" for cat in categories]
-    lines.extend(_cap_list(detail_lines, len(categories)))
     return "\n".join(lines)
 
 

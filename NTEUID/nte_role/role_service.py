@@ -4,10 +4,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
 from .role_card import draw_role_card_img
-from .role_text import (
-    format_achievement,
-    format_refresh_summary,
-)
+from .role_text import format_refresh_summary
 from .role_cache import load_role_characters_cache, save_role_characters_cache
 from ..utils.msgs import RoleMsg, send_nte_notify
 from .explore_card import draw_explore_img
@@ -17,6 +14,7 @@ from ..utils.session import open_session, report_call_error
 from .character_card import draw_character_card_img
 from ..utils.database import NTEUser
 from .realestate_card import draw_realestate_img
+from .achievement_card import draw_achievement_img
 from ..utils.name_convert import alias_to_char_name, char_name_to_char_id
 from ..utils.sdk.tajiduo_model import TajiduoError, CharacterDetail
 
@@ -123,7 +121,7 @@ async def run_achievement(bot: Bot, ev: Event) -> None:
         )
     if not achievement.detail:
         return await send_nte_notify(bot, ev, RoleMsg.EMPTY)
-    await bot.send(format_achievement(achievement))
+    await bot.send(await draw_achievement_img(ev, achievement, user.role_name))
 
 
 async def run_realestate(bot: Bot, ev: Event) -> None:
