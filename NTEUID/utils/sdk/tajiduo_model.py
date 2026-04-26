@@ -219,8 +219,12 @@ class RoleHome(_TajiduoModel):
 
 
 class CharacterProperty(_TajiduoModel):
+    """部分驱动盘 main_properties 项服务端只回 `{id}` 缺 `name`/`value`，
+    pydantic 严格校验会让整张 CharacterDetail 失败；放宽成可选并默认空串，
+    UI 侧已对空名/空值做过滤。"""
+
     id: str
-    name: str
+    name: str = ""
     value: str = ""
 
 
