@@ -1,0 +1,283 @@
+{
+    "登录绑定": {
+        "desc": "塔吉多账号登录与多账号切换",
+        "data": [
+            {
+                "name": "登录",
+                "desc": "扫码登录塔吉多账号；登录后自动绑定主游戏（异环）主角色",
+                "eg": "登录",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "退出登录",
+                "desc": "清除当前用户的全部塔吉多账号",
+                "eg": "退出登录",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "刷新令牌",
+                "desc": "用 refreshToken 续期 accessToken；查询 / 签到失效时优先尝试这个",
+                "eg": "刷新令牌",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "获取laohutoken",
+                "desc": "私聊获取 laohu 令牌；用于跨平台账号迁移调试",
+                "eg": "获取laohutoken",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "查看",
+                "desc": "查看当前已绑定的全部塔吉多账号",
+                "eg": "查看",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "切换",
+                "desc": "在多账号之间切换默认账号",
+                "eg": "切换10177461",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            }
+        ]
+    },
+    "信息查询": {
+        "desc": "异环角色面板与各类详情卡",
+        "data": [
+            {
+                "name": "查询",
+                "desc": "查询异环主角色面板（等级 / 大亨 / 区域 / 房产 / 载具汇总）",
+                "eg": "查询",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "刷新面板",
+                "desc": "拉取最新角色面板数据（含全部角色属性 / 技能 / 弧盘 / 驱动盘），按品质分组列出名字",
+                "eg": "刷新面板",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "角色面板",
+                "desc": "查看单个角色详细卡：肖像 / 觉醒 / 属性 / 战斗 + 生活技能 / 弧盘 / 空幕",
+                "eg": "小吱面板",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "成就",
+                "desc": "异环成就进度卡：磁带数 / UMD 金银铜 / 8 大类目进度",
+                "eg": "成就",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "房产",
+                "desc": "异环房产卡：每套房产含居住角色 + 异象家具进度",
+                "eg": "我的房产",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "载具",
+                "desc": "异环载具卡：每辆已购载具的基础属性 / 改装属性 / 改装件",
+                "eg": "我的载具",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "探索",
+                "desc": "异环探索详情卡：每个区域的探索值 / 进度 + 地图游记子项",
+                "eg": "探索",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "实时信息",
+                "desc": "本性像素 / 都市活力 / 活跃度 / 周本次数",
+                "eg": "实时信息",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            }
+        ]
+    },
+    "配队攻略": {
+        "desc": "配队推荐与零号攻略组角色攻略",
+        "data": [
+            {
+                "name": "配队推荐",
+                "desc": "对应角色的官方配队推荐图（异环 webview 1:1 还原）",
+                "eg": "小吱配队",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "角色攻略",
+                "desc": "零号攻略组的角色攻略图",
+                "eg": "小吱攻略",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            }
+        ]
+    },
+    "角色别名": {
+        "desc": "查看 / 添加 / 删除角色查询时使用的别名",
+        "data": [
+            {
+                "name": "角色别名列表",
+                "desc": "查看某角色当前的全部别名",
+                "eg": "小吱别名",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "添加别名",
+                "desc": "为指定角色添加查询别名",
+                "eg": "添加小吱别名吱吱",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "删除别名",
+                "desc": "删除指定角色的某个别名",
+                "eg": "删除小吱别名吱吱",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            }
+        ]
+    },
+    "签到服务": {
+        "desc": "异环 / 幻塔 日签 + 自动签到 + 签到日历",
+        "data": [
+            {
+                "name": "签到",
+                "desc": "执行 App 签到 + 异环游戏签到 + 社区任务",
+                "eg": "签到",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "开启自动签到",
+                "desc": "开启每日定时自动签到（按账号生效）",
+                "eg": "开启自动签到",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "关闭自动签到",
+                "desc": "关闭每日定时自动签到",
+                "eg": "关闭自动签到",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "签到日历",
+                "desc": "异环签到日历卡：本月累计签到 + 30 格奖励 + 每日状态",
+                "eg": "签到日历",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "幻塔签到日历",
+                "desc": "幻塔签到日历卡（同一塔吉多账号下的幻塔角色）",
+                "eg": "幻塔签到日历",
+                "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            }
+        ]
+    },
+    "公告订阅": {
+        "desc": "异环官方公告群推送（仅群聊）",
+        "data": [
+            {
+                "name": "订阅公告",
+                "desc": "在当前群订阅异环官方公告推送",
+                "eg": "订阅公告",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": true
+            },
+            {
+                "name": "取消订阅公告",
+                "desc": "取消当前群的公告订阅",
+                "eg": "取消订阅公告",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": true
+            }
+        ]
+    },
+    "其他": {
+        "desc": "兑换码与帮助",
+        "data": [
+            {
+                "name": "兑换码",
+                "desc": "查看当前可用的官方兑换码列表",
+                "eg": "兑换码",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "帮助",
+                "desc": "显示本帮助",
+                "eg": "帮助",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            }
+        ]
+    },
+    "主人功能": {
+        "desc": "需要 bot 主人权限",
+        "pm": 1,
+        "data": [
+            {
+                "name": "全部签到",
+                "desc": "立刻为全部已绑定账号执行一次签到（与定时签到互斥）",
+                "eg": "全部签到",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": true
+            },
+            {
+                "name": "更新记录",
+                "desc": "查看插件 git 更新记录",
+                "eg": "更新记录",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": true
+            }
+        ]
+    }
+}
