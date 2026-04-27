@@ -16,8 +16,8 @@ from ..utils.image import (
     COLOR_SUBTEXT,
     add_footer,
     get_nte_bg,
-    circle_mask,
     rounded_mask,
+    char_img_ring,
     get_nte_title_bg,
     make_head_avatar,
 )
@@ -200,7 +200,7 @@ def _draw_chars_grid(canvas: Image.Image, avatars: list[Image.Image], xy: tuple[
         cy = cell_y + CHAR_BG_SIZE // 2
         avatar_x = cx - CHAR_AVATAR_SIZE // 2
         avatar_y = cy - CHAR_AVATAR_SIZE // 2
-        canvas.paste(avatar, (avatar_x, avatar_y), circle_mask(CHAR_AVATAR_SIZE))
+        canvas.alpha_composite(char_img_ring(avatar, CHAR_AVATAR_SIZE), (avatar_x, avatar_y))
 
 
 def _draw_furniture_cell(

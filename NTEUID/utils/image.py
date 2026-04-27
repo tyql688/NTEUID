@@ -109,14 +109,6 @@ def rounded_mask(size: Size, radius: int) -> Image.Image:
     return mask
 
 
-def circle_mask(diameter: int) -> Image.Image:
-    """正圆 L 模式遮罩（头像用）。4× 超采样 + LANCZOS 缩回，抗锯齿无白边。"""
-    big = diameter * 4
-    mask = Image.new("L", (big, big), 0)
-    ImageDraw.Draw(mask).ellipse((0, 0, big - 1, big - 1), fill=255)
-    return mask.resize((diameter, diameter), Image.Resampling.LANCZOS)
-
-
 def line_height(font: ImageFont.FreeTypeFont) -> int:
     return sum(font.getmetrics())
 
@@ -232,7 +224,8 @@ def char_img_ring(avatar: Image.Image, size: int) -> Image.Image:
     head = avatar.convert("RGBA").resize((size, size))
     mask = Image.open(TEXT_PATH / "head_mask.png").convert("L").resize((size, size))
     canvas.paste(head, (0, 0), mask)
-    canvas.alpha_composite(Image.open(TEXT_PATH / "head_ring.png").convert("RGBA").resize((size, size)))
+    ring = Image.open(TEXT_PATH / "head_ring.png").convert("RGBA").resize((size, size))
+    canvas.paste(ring, (0, 0), ring)
     return canvas
 
 
@@ -247,17 +240,17 @@ def make_head_avatar(
     head = avatar.convert("RGBA").resize((avatar_size, avatar_size))
     mask = Image.open(TEXT_PATH / "head_mask.png").convert("L").resize((avatar_size, avatar_size))
     canvas.paste(head, (offset, offset), mask)
-    canvas.alpha_composite(
-        Image.open(TEXT_PATH / "head_ring.png").convert("RGBA").resize((avatar_size, avatar_size)),
-        (offset, offset),
-    )
+
+    ring = Image.open(TEXT_PATH / "head_ring.png").convert("RGBA").resize((avatar_size, avatar_size))
+    canvas.paste(ring, (offset, offset), ring)
 
     frame_path = (
         TEXT_PATH / "frame" / f"{frame_id}.png"
         if frame_id
         else random.choice(list((TEXT_PATH / "frame").glob("*.png")))
     )
-    canvas.alpha_composite(Image.open(frame_path).convert("RGBA").resize((size, size)))
+    frame = Image.open(frame_path).convert("RGBA").resize((size, size))
+    canvas.paste(frame, (0, 0), frame)
     return canvas
 
 

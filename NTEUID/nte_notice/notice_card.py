@@ -24,9 +24,9 @@ from ..utils.image import (
     draw_card,
     wrap_text,
     cache_name,
-    circle_mask,
     load_qr_code,
     rounded_mask,
+    char_img_ring,
     draw_text_block,
     shrink_to_width,
     get_nte_title_bg,
@@ -231,12 +231,13 @@ async def draw_notice_detail_img(_notice_type: str, post: NoticePost):
     qr_bottom = y
     qr_left = WIDTH - PADDING
     if author_avatar:
-        avatar = await _load_detail_image(author_avatar, 72)
-        avatar = ImageOps.fit(avatar, (72, 72), method=Image.Resampling.LANCZOS)
-        page.paste(avatar, (PADDING, y), circle_mask(72))
-        draw.text((PADDING + 92, y + 10), author, font=author_font, fill=COLOR_TITLE)
-        draw.text((PADDING + 92, y + 42), "官方资讯发布", font=meta_font, fill=COLOR_MUTED)
-        y += 98
+        avatar = await _load_detail_image(author_avatar, 120)
+        avatar = ImageOps.fit(avatar, (120, 120), method=Image.Resampling.LANCZOS)
+        ring_img = char_img_ring(avatar, 120)
+        page.paste(ring_img, (PADDING, y), ring_img)
+        draw.text((PADDING + 140, y + 32), author, font=author_font, fill=COLOR_TITLE)
+        draw.text((PADDING + 140, y + 68), "官方资讯发布", font=meta_font, fill=COLOR_MUTED)
+        y += 146
     else:
         if author:
             draw.text((PADDING, y), author, font=author_font, fill=COLOR_TITLE)
