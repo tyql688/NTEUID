@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import TracebackType
 from typing import Tuple, Optional
 from datetime import datetime
@@ -18,27 +19,57 @@ from .sdk.tajiduo_model import TajiduoError
 # 塔吉多业务接口在 session 被顶下/失效时返回 401/402/403；HTTP 状态在 SDK 层落到 `error.raw`
 _AUTH_STATUSES = {401, 402, 403}
 
+# 同 center_uid 并发 refresh 的 single-flight 表：首笔真跑、落库，后到的协程 await 同一 future。
+# TTL 内的缓存命中不进这张表；只有真要打网络的才有竞争。
+_refresh_inflight: dict[str, "asyncio.Future[tuple[str, str]]"] = {}
+
 
 async def ensure_tajiduo_client(user: NTEUser) -> TajiduoClient:
     """返回带可用 access_token 的 client。DB 缓存未过 TTL 直接复用、零网络；
-    超 TTL 或无缓存时调一次 refresh 并落库。refresh 失败的 TajiduoError 透传给调用方。
+    超 TTL 或无缓存时调一次 refresh 并落库。同 center_uid 并发场景由
+    single-flight 合并：第一笔真跑，后到协程复用同一 future 的结果，
+    避免第二笔拿旧 refresh_token 撞 401/402 把账号误标失效。
 
     注意：`TajiduoClient.from_user` 只带 refresh_token，本函数会按需把 access_token
-    回写到 client 实例字段（缓存路径直接 mutate；refresh 路径由 `refresh_session()`
-    内部更新）——这是与 `from_user` 配对使用的约定。
+    回写到 client 实例字段（缓存路径直接 mutate；refresh 路径用 single-flight 拿到的
+    最新 token 回写）——这是与 `from_user` 配对使用的约定。
     """
     client = TajiduoClient.from_user(user)
     if _access_token_fresh(user):
         client.access_token = user.access_token
         return client
 
-    session = await client.refresh_session()
-    await NTEUser.update_tokens(
-        center_uid=user.center_uid,
-        refresh_token=session.refresh_token,
-        access_token=session.access_token,
-    )
+    access_token, refresh_token = await _refresh_singleflight(user, client)
+    client.access_token = access_token
+    client.refresh_token = refresh_token
     return client
+
+
+async def _refresh_singleflight(user: NTEUser, client: TajiduoClient) -> Tuple[str, str]:
+    """同 center_uid 并发：首笔真跑 refresh + 落库，后到的协程 await 同一 future。
+    异常（含 CancelledError）也会传递给所有等待者，避免 hang。"""
+    inflight = _refresh_inflight.get(user.center_uid)
+    if inflight is not None:
+        return await inflight
+
+    fut: "asyncio.Future[tuple[str, str]]" = asyncio.get_running_loop().create_future()
+    _refresh_inflight[user.center_uid] = fut
+    try:
+        session = await client.refresh_session()
+        await NTEUser.update_tokens(
+            center_uid=session.center_uid,
+            refresh_token=session.refresh_token,
+            access_token=session.access_token,
+        )
+        result = (session.access_token, session.refresh_token)
+        fut.set_result(result)
+        return result
+    except BaseException as exc:
+        if not fut.done():
+            fut.set_exception(exc)
+        raise
+    finally:
+        _refresh_inflight.pop(user.center_uid, None)
 
 
 def _access_token_fresh(user: NTEUser) -> bool:
