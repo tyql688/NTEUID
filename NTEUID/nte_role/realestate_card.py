@@ -11,7 +11,7 @@ from gsuid_core.utils.image.convert import convert_img
 from gsuid_core.utils.image.image_tools import get_event_avatar
 
 from ..utils.image import (
-    VW_SCALE as SCALE,
+    vw,
     add_footer,
     get_nte_bg,
     open_texture,
@@ -31,47 +31,47 @@ WIDTH = 1080
 FOOTER_RESERVE = 80
 
 TEXTURE_PATH = Path(__file__).parent / "texture2d" / "realestate"
-PAGE_PAD_X = round(15 * SCALE)
+PAGE_PAD_X = vw(15)
 CONTENT_WIDTH = WIDTH - PAGE_PAD_X * 2
 
-CARD_RADIUS = round(6 * SCALE)
-CARD_GAP = round(15 * SCALE)
-CARD_PAD_X = round(8 * SCALE)
-CARD_PAD_Y = round(8 * SCALE)
-HEADER_ROW_TOP = round(5 * SCALE)
-HEADER_ROW_INSET = round(5 * SCALE)
-PIN_SIZE = round(16 * SCALE)
-NAME_GAP = round(5 * SCALE)
-NAME_FONT = round(15 * SCALE)
-BODY_TOP_PAD = round(5 * SCALE)
-BODY_INSET_X = round(10 * SCALE)
-BODY_INSET_Y = round(8 * SCALE)
-HOUSE_IMG_W = round(198 * SCALE)
-HOUSE_IMG_H = round(133 * SCALE)
-CHARS_BLOCK_LEFT = round(10 * SCALE)
-CHARS_BLOCK_W = round(140 * SCALE)
-CHARS_TOP_OFFSET = round(38 * SCALE)
-CHIP_H = round(16 * SCALE)
-CHIP_FONT = round(10 * SCALE)
-CHAR_BG_SIZE = round(37 * SCALE)
-CHAR_AVATAR_SIZE = round(30 * SCALE)
-CHARS_GRID_GAP = round(3 * SCALE)
-CHARS_GRID_TOP = round(3 * SCALE)
+CARD_RADIUS = vw(6)
+CARD_GAP = vw(15)
+CARD_PAD_X = vw(8)
+CARD_PAD_Y = vw(8)
+HEADER_ROW_TOP = vw(5)
+HEADER_ROW_INSET = vw(5)
+PIN_SIZE = vw(16)
+NAME_GAP = vw(5)
+NAME_FONT = vw(15)
+BODY_TOP_PAD = vw(5)
+BODY_INSET_X = vw(10)
+BODY_INSET_Y = vw(8)
+HOUSE_IMG_W = vw(198)
+HOUSE_IMG_H = vw(133)
+CHARS_BLOCK_LEFT = vw(10)
+CHARS_BLOCK_W = vw(140)
+CHARS_TOP_OFFSET = vw(38)
+CHIP_H = vw(16)
+CHIP_FONT = vw(10)
+CHAR_BG_SIZE = vw(37)
+CHAR_AVATAR_SIZE = vw(30)
+CHARS_GRID_GAP = vw(3)
+CHARS_GRID_TOP = vw(3)
 
-SEC_ICON_SIZE = round(16 * SCALE)
-SEC_TITLE_FONT = round(14 * SCALE)
-SEC_TITLE_GAP = round(5 * SCALE)
-SEC_TOP = round(5 * SCALE)
-GRID_INNER_PAD_X = round(7 * SCALE)
-GRID_INNER_PAD_Y = round(7 * SCALE)
-GRID_GAP = round(5 * SCALE)
-GRID_RADIUS = round(6 * SCALE)
-FURN_BG_SIZE = round(62 * SCALE)
-FURN_INNER_SIZE = round(47 * SCALE)
-FURN_LOCK_SIZE = round(62 * SCALE)
-FURN_LOCK_FONT = round(9 * SCALE)
-LOGO_W = round(97 * SCALE)
-LOGO_PAD_Y = round(8 * SCALE)
+SEC_ICON_SIZE = vw(16)
+SEC_TITLE_FONT = vw(14)
+SEC_TITLE_GAP = vw(5)
+SEC_TOP = vw(5)
+GRID_INNER_PAD_X = vw(7)
+GRID_INNER_PAD_Y = vw(7)
+GRID_GAP = vw(5)
+GRID_RADIUS = vw(6)
+FURN_BG_SIZE = vw(62)
+FURN_INNER_SIZE = vw(47)
+FURN_LOCK_SIZE = vw(62)
+FURN_LOCK_FONT = vw(9)
+LOGO_W = vw(97)
+LOGO_PAD_Y = vw(8)
 
 COLOR_CARD_BG = (48, 48, 50, 255)
 COLOR_NAME = (231, 108, 13)
@@ -186,7 +186,7 @@ def _draw_furniture_cell(
         # 未拥有：未解锁 mask + 标签
         canvas.alpha_composite(UNLOCK_MASK, (x, y))
         draw.text(
-            (x + FURN_BG_SIZE // 2 + round(5 * SCALE), y + FURN_BG_SIZE // 2),
+            (x + FURN_BG_SIZE // 2 + vw(5), y + FURN_BG_SIZE // 2),
             "未解锁",
             font=furn_lock_font,
             fill=COLOR_FURN_LOCK_TEXT,
@@ -258,7 +258,7 @@ def _draw_card(
     cur_y += body_h + CARD_PAD_Y
 
     # 异象家具 grid
-    sec_x = card_x + CARD_PAD_X + round(8 * SCALE)
+    sec_x = card_x + CARD_PAD_X + vw(8)
     canvas.alpha_composite(SEC_ICON, (sec_x, cur_y))
     sec_text_x = sec_x + SEC_ICON_SIZE + SEC_TITLE_GAP
     draw.text(
@@ -272,7 +272,7 @@ def _draw_card(
 
     # grid 黑底
     grid_left = sec_x
-    grid_right = card_x + CONTENT_WIDTH - CARD_PAD_X - round(8 * SCALE)
+    grid_right = card_x + CONTENT_WIDTH - CARD_PAD_X - vw(8)
     grid_w = grid_right - grid_left
     rows = _grid_rows(len(prepared.furnitures), 5) or 1
     grid_inner_h = rows * FURN_BG_SIZE + (rows - 1) * GRID_GAP

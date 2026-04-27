@@ -10,8 +10,8 @@ from gsuid_core.utils.image.convert import convert_img
 from gsuid_core.utils.image.image_tools import get_event_avatar
 
 from ..utils.image import (
-    VW_SCALE as SCALE,
     COLOR_WHITE,
+    vw,
     add_footer,
     cache_name,
     get_nte_bg,
@@ -29,43 +29,43 @@ WIDTH = 1180
 FOOTER_RESERVE = 80
 
 # 网格容器（对应官方 `flex grid grid-cols-4 px-12p py-10p gap-x-14p gap-y-12p`）
-PANEL_RADIUS = round(12 * SCALE)
-PANEL_PAD_X = round(12 * SCALE)
+PANEL_RADIUS = vw(12)
+PANEL_PAD_X = vw(12)
 GRID_COLS = 4
-GRID_GAP_X = round(14 * SCALE)
-GRID_GAP_Y = round(12 * SCALE)
+GRID_GAP_X = vw(14)
+GRID_GAP_Y = vw(12)
 
 # 单元格：官方 `w-78.5p h-96p`
-CELL_W = round(78.5 * SCALE)
-CELL_H = round(96 * SCALE)
-CELL_DAY_FONT = round(12 * SCALE)
-CELL_NUM_FONT = round(10 * SCALE)
-CELL_NUM_RIGHT_PAD = round(4 * SCALE)
-CELL_BOTTOM_PAD = round(4 * SCALE)
-CELL_TEXT_GAP = round(2 * SCALE)
-CELL_ICON_SIZE = round(56 * SCALE)
-CELL_ICON_TOP = round(8 * SCALE)
+CELL_W = vw(78.5)
+CELL_H = vw(96)
+CELL_DAY_FONT = vw(12)
+CELL_NUM_FONT = vw(10)
+CELL_NUM_RIGHT_PAD = vw(4)
+CELL_BOTTOM_PAD = vw(4)
+CELL_TEXT_GAP = vw(2)
+CELL_ICON_SIZE = vw(56)
+CELL_ICON_TOP = vw(8)
 
 # sign_header.png 内分层（源 960×1350）；粉线占 168~177 共 9 行
 SIGN_HEADER_DARK_END = 168
 SIGN_HEADER_PINK_END = 177
 
 # sign_logo.png：NTE title 与面板之间居中
-SIGN_LOGO_W = round(220 * SCALE)
-SIGN_LOGO_BOTTOM_GAP = round(10 * SCALE)
+SIGN_LOGO_W = vw(220)
+SIGN_LOGO_BOTTOM_GAP = vw(10)
 
-SUMMARY_HEIGHT = round(64 * SCALE)
-SUMMARY_LABEL_FONT = round(11 * SCALE)
-SUMMARY_VALUE_FONT = round(20 * SCALE)
-SUMMARY_VALUE_TOP = round(11 * SCALE)
-SUMMARY_VALUE_LABEL_GAP = round(4 * SCALE)
-SUMMARY_DIVIDER_INSET = round(14 * SCALE)
+SUMMARY_HEIGHT = vw(64)
+SUMMARY_LABEL_FONT = vw(11)
+SUMMARY_VALUE_FONT = vw(20)
+SUMMARY_VALUE_TOP = vw(11)
+SUMMARY_VALUE_LABEL_GAP = vw(4)
+SUMMARY_DIVIDER_INSET = vw(14)
 
-GRID_TOP_GAP = round(10 * SCALE)
-DISCLAIMER_FONT = round(10 * SCALE)
-DISCLAIMER_TOP = round(16 * SCALE)
-DISCLAIMER_BOTTOM = round(14 * SCALE)
-PANEL_BOTTOM_PAD = round(16 * SCALE)
+GRID_TOP_GAP = vw(10)
+DISCLAIMER_FONT = vw(10)
+DISCLAIMER_TOP = vw(16)
+DISCLAIMER_BOTTOM = vw(14)
+PANEL_BOTTOM_PAD = vw(16)
 
 COLOR_SUMMARY_LABEL = (170, 170, 175)
 COLOR_DIVIDER = (75, 75, 80)

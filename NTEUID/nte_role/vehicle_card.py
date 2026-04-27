@@ -10,8 +10,8 @@ from gsuid_core.utils.image.convert import convert_img
 from gsuid_core.utils.image.image_tools import get_event_avatar
 
 from ..utils.image import (
-    VW_SCALE as SCALE,
     COLOR_WHITE,
+    vw,
     add_footer,
     get_nte_bg,
     open_texture,
@@ -26,46 +26,46 @@ WIDTH = 1080
 FOOTER_RESERVE = 80
 
 TEXTURE_PATH = Path(__file__).parent / "texture2d" / "vehicle"
-PAGE_PAD_X = round(15 * SCALE)
+PAGE_PAD_X = vw(15)
 CONTENT_WIDTH = WIDTH - PAGE_PAD_X * 2
 
-CARD_RADIUS = round(8 * SCALE)
-CARD_GAP = round(15 * SCALE)
-CARD_PAD = round(10 * SCALE)
+CARD_RADIUS = vw(8)
+CARD_GAP = vw(15)
+CARD_PAD = vw(10)
 
 VEHICLE_IMG_W = CONTENT_WIDTH - CARD_PAD * 2
 VEHICLE_IMG_H_RATIO = 0.42
-NAME_FONT = round(18 * SCALE)
-ID_FONT = round(11 * SCALE)
-NAME_GAP_X = round(8 * SCALE)
-HEADER_PAD_Y = round(8 * SCALE)
+NAME_FONT = vw(18)
+ID_FONT = vw(11)
+NAME_GAP_X = vw(8)
+HEADER_PAD_Y = vw(8)
 
-SEC_ICON_SIZE = round(16 * SCALE)
-SEC_TITLE_FONT = round(14 * SCALE)
-SEC_TITLE_GAP = round(3 * SCALE)
-SEC_BLOCK_TOP = round(10 * SCALE)
-SEC_BLOCK_INNER_PAD = round(11 * SCALE)
-SEC_BLOCK_RADIUS = round(8 * SCALE)
+SEC_ICON_SIZE = vw(16)
+SEC_TITLE_FONT = vw(14)
+SEC_TITLE_GAP = vw(3)
+SEC_BLOCK_TOP = vw(10)
+SEC_BLOCK_INNER_PAD = vw(11)
+SEC_BLOCK_RADIUS = vw(8)
 COLOR_SEC_BLOCK_BG = (54, 56, 58, 255)
 
-PROP_LABEL_FONT = round(11 * SCALE)
-PROP_VALUE_FONT = round(14 * SCALE)
-PROP_ROW_GAP = round(8 * SCALE)
-BAR_W = round(120 * SCALE)
-BAR_H = round(8 * SCALE)
+PROP_LABEL_FONT = vw(11)
+PROP_VALUE_FONT = vw(14)
+PROP_ROW_GAP = vw(8)
+BAR_W = vw(120)
+BAR_H = vw(8)
 BAR_BG_COLOR = (60, 60, 64, 255)
 BAR_FILL_COLOR = (255, 174, 92, 255)
-BAR_DOT_SIZE = round(14 * SCALE)
+BAR_DOT_SIZE = vw(14)
 BAR_DOT_COLOR = (255, 200, 120, 255)
 
-MODEL_CELL_W = round(50 * SCALE)
-MODEL_CELL_H = round(50 * SCALE)
-MODEL_INNER_W = round(46 * SCALE)
-MODEL_GAP = round(5 * SCALE)
+MODEL_CELL_W = vw(50)
+MODEL_CELL_H = vw(50)
+MODEL_INNER_W = vw(46)
+MODEL_GAP = vw(5)
 MODEL_COLS = 6
 
-LOGO_W = round(88 * SCALE)
-LOGO_PAD_Y = round(8 * SCALE)
+LOGO_W = vw(88)
+LOGO_PAD_Y = vw(8)
 
 COLOR_CARD_BG = (38, 38, 40, 255)
 COLOR_NAME = (255, 174, 92)
@@ -138,7 +138,7 @@ def _card_height(prepared: PreparedVehicle) -> int:
             height += SEC_BLOCK_TOP + _models_block_height(len(prepared.vehicle.models))
         height += LOGO_PAD_Y + LOGO.height + LOGO_PAD_Y
     else:
-        height += SEC_BLOCK_TOP + round(40 * SCALE)  # 「未拥有」chip 区
+        height += SEC_BLOCK_TOP + vw(40)  # 「未拥有」chip 区
     return height + CARD_PAD
 
 
@@ -231,8 +231,8 @@ def _draw_advanced_props(
 ) -> int:
     inner_h = len(adv) * max(BAR_DOT_SIZE, int(prop_value_font.size)) + max(0, len(adv) - 1) * PROP_ROW_GAP
     inner_x, inner_y, inner_w = _draw_section_block(canvas, draw, "改装属性", xy, inner_h)
-    label_w = round(70 * SCALE)
-    value_w = round(50 * SCALE)
+    label_w = vw(70)
+    value_w = vw(50)
     bar_x = inner_x + label_w
     row_h = max(BAR_DOT_SIZE, int(prop_value_font.size))
     for idx, stat in enumerate(adv):
@@ -320,7 +320,7 @@ def _draw_card(
 
     if not prepared.vehicle.own:
         cur_y += SEC_BLOCK_TOP
-        chip_h = round(40 * SCALE)
+        chip_h = vw(40)
         bg = Image.new("RGBA", (VEHICLE_IMG_W, chip_h), COLOR_LOCK_BG)
         canvas.paste(bg, (inner_x, cur_y), rounded_mask((VEHICLE_IMG_W, chip_h), SEC_BLOCK_RADIUS))
         draw.text(

@@ -11,7 +11,7 @@ from .explore_card import draw_explore_img
 from .refresh_card import draw_refresh_img
 from .vehicle_card import draw_vehicle_img
 from .realtime_card import draw_realtime_img
-from ..utils.session import session_call
+from ..utils.session import SessionCall
 from .character_card import draw_character_card_img
 from ..utils.database import NTEUser
 from .realestate_card import draw_realestate_img
@@ -20,16 +20,15 @@ from ..utils.name_convert import alias_to_char_name, char_name_to_char_id
 from ..utils.sdk.tajiduo_model import CharacterDetail
 
 
-def _msgs(load_failed: str = RoleMsg.LOAD_FAILED) -> dict[str, str]:
-    return {
-        "not_logged_in_msg": RoleMsg.not_logged_in(),
-        "login_expired_msg": RoleMsg.login_expired(),
-        "load_failed_msg": load_failed,
-    }
-
-
 async def run_role_home(bot: Bot, ev: Event) -> None:
-    async with session_call(bot, ev, tag="角色面板", **_msgs()) as session:
+    async with SessionCall(
+        bot,
+        ev,
+        tag="角色面板",
+        not_logged_in_msg=RoleMsg.not_logged_in(),
+        login_expired_msg=RoleMsg.login_expired(),
+        load_failed_msg=RoleMsg.LOAD_FAILED,
+    ) as session:
         if session is None:
             return
         user, client = session
@@ -65,7 +64,14 @@ async def run_character_detail(bot: Bot, ev: Event, char_name: str) -> None:
 
 
 async def run_refresh_role_panel(bot: Bot, ev: Event) -> None:
-    async with session_call(bot, ev, tag="刷新面板", **_msgs(RoleMsg.REFRESH_FAILED)) as session:
+    async with SessionCall(
+        bot,
+        ev,
+        tag="刷新面板",
+        not_logged_in_msg=RoleMsg.not_logged_in(),
+        login_expired_msg=RoleMsg.login_expired(),
+        load_failed_msg=RoleMsg.REFRESH_FAILED,
+    ) as session:
         if session is None:
             return
         user, client = session
@@ -80,7 +86,14 @@ async def run_refresh_role_panel(bot: Bot, ev: Event) -> None:
 
 
 async def run_achievement(bot: Bot, ev: Event) -> None:
-    async with session_call(bot, ev, tag="成就进度", **_msgs()) as session:
+    async with SessionCall(
+        bot,
+        ev,
+        tag="成就进度",
+        not_logged_in_msg=RoleMsg.not_logged_in(),
+        login_expired_msg=RoleMsg.login_expired(),
+        load_failed_msg=RoleMsg.LOAD_FAILED,
+    ) as session:
         if session is None:
             return
         user, client = session
@@ -91,7 +104,14 @@ async def run_achievement(bot: Bot, ev: Event) -> None:
 
 
 async def run_realestate(bot: Bot, ev: Event) -> None:
-    async with session_call(bot, ev, tag="房产", **_msgs()) as session:
+    async with SessionCall(
+        bot,
+        ev,
+        tag="房产",
+        not_logged_in_msg=RoleMsg.not_logged_in(),
+        login_expired_msg=RoleMsg.login_expired(),
+        load_failed_msg=RoleMsg.LOAD_FAILED,
+    ) as session:
         if session is None:
             return
         user, client = session
@@ -102,7 +122,14 @@ async def run_realestate(bot: Bot, ev: Event) -> None:
 
 
 async def run_realtime(bot: Bot, ev: Event) -> None:
-    async with session_call(bot, ev, tag="实时信息", **_msgs()) as session:
+    async with SessionCall(
+        bot,
+        ev,
+        tag="实时信息",
+        not_logged_in_msg=RoleMsg.not_logged_in(),
+        login_expired_msg=RoleMsg.login_expired(),
+        load_failed_msg=RoleMsg.LOAD_FAILED,
+    ) as session:
         if session is None:
             return
         user, client = session
@@ -111,7 +138,14 @@ async def run_realtime(bot: Bot, ev: Event) -> None:
 
 
 async def run_explore(bot: Bot, ev: Event) -> None:
-    async with session_call(bot, ev, tag="探索详情", **_msgs()) as session:
+    async with SessionCall(
+        bot,
+        ev,
+        tag="探索详情",
+        not_logged_in_msg=RoleMsg.not_logged_in(),
+        login_expired_msg=RoleMsg.login_expired(),
+        load_failed_msg=RoleMsg.LOAD_FAILED,
+    ) as session:
         if session is None:
             return
         user, client = session
@@ -122,7 +156,14 @@ async def run_explore(bot: Bot, ev: Event) -> None:
 
 
 async def run_vehicles(bot: Bot, ev: Event) -> None:
-    async with session_call(bot, ev, tag="载具", **_msgs()) as session:
+    async with SessionCall(
+        bot,
+        ev,
+        tag="载具",
+        not_logged_in_msg=RoleMsg.not_logged_in(),
+        login_expired_msg=RoleMsg.login_expired(),
+        load_failed_msg=RoleMsg.LOAD_FAILED,
+    ) as session:
         if session is None:
             return
         user, client = session

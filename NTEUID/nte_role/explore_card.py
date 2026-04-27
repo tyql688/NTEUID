@@ -10,7 +10,7 @@ from gsuid_core.utils.image.convert import convert_img
 from gsuid_core.utils.image.image_tools import get_event_avatar
 
 from ..utils.image import (
-    VW_SCALE as SCALE,
+    vw,
     add_footer,
     get_nte_bg,
     rounded_mask,
@@ -25,34 +25,34 @@ FOOTER_RESERVE = 80
 
 TEXTURE_PATH = Path(__file__).parent / "texture2d" / "explore"
 
-PAGE_PAD_X = round(15 * SCALE)
-CARD_PAD = round(5 * SCALE)
-CARD_GAP = round(15 * SCALE)
-CARD_RADIUS = round(12 * SCALE)
-CARD_BOTTOM_PAD = round(17 * SCALE)
-BANNER_OFFSET_TOP = round(97 * SCALE)
-BANNER_INFO_BIAS = round(5 * SCALE)  # 信息行垂直中心相对 city_bottom 几何中心的下移量
-PIN_SIZE = round(16 * SCALE)
-BOOK_SIZE = round(16 * SCALE)
-NAME_GAP = round(5 * SCALE)
-NAME_FONT_SIZE = round(15 * SCALE)
-PROGRESS_BAR_HEIGHT = round(10 * SCALE)
-BIG_NUM_FONT_SIZE = round(24 * SCALE)
-BIG_LABEL_FONT_SIZE = round(11 * SCALE)
-BIG_NUM_BLOCK_W = round(45 * SCALE)
-BIG_NUM_BLOCK_MARGIN = round(15 * SCALE)
-INFO_BLOCK_LEFT_MARGIN = round(15 * SCALE)
-SUB_TITLE_FONT = round(13 * SCALE)
-SUB_TITLE_GAP = round(2 * SCALE)
-SUB_HEADER_TOP = round(5 * SCALE)
-SUB_GRID_TOP = round(5 * SCALE)
-SUB_ROW_GAP = round(5 * SCALE)
-SUB_CELL_W = round(110 * SCALE)
-SUB_CELL_H = round(35 * SCALE)
-SUB_TYPE_ICON = round(35 * SCALE)
-SUB_NAME_FONT = round(10 * SCALE)
-SUB_VALUE_FONT = round(10 * SCALE)
-SUB_RIGHT_PAD = round(8 * SCALE)
+PAGE_PAD_X = vw(15)
+CARD_PAD = vw(5)
+CARD_GAP = vw(15)
+CARD_RADIUS = vw(12)
+CARD_BOTTOM_PAD = vw(17)
+BANNER_OFFSET_TOP = vw(97)
+BANNER_INFO_BIAS = vw(5)  # 信息行垂直中心相对 city_bottom 几何中心的下移量
+PIN_SIZE = vw(16)
+BOOK_SIZE = vw(16)
+NAME_GAP = vw(5)
+NAME_FONT_SIZE = vw(15)
+PROGRESS_BAR_HEIGHT = vw(10)
+BIG_NUM_FONT_SIZE = vw(24)
+BIG_LABEL_FONT_SIZE = vw(11)
+BIG_NUM_BLOCK_W = vw(45)
+BIG_NUM_BLOCK_MARGIN = vw(15)
+INFO_BLOCK_LEFT_MARGIN = vw(15)
+SUB_TITLE_FONT = vw(13)
+SUB_TITLE_GAP = vw(2)
+SUB_HEADER_TOP = vw(5)
+SUB_GRID_TOP = vw(5)
+SUB_ROW_GAP = vw(5)
+SUB_CELL_W = vw(110)
+SUB_CELL_H = vw(35)
+SUB_TYPE_ICON = vw(35)
+SUB_NAME_FONT = vw(10)
+SUB_VALUE_FONT = vw(10)
+SUB_RIGHT_PAD = vw(8)
 CONTENT_WIDTH = WIDTH - PAGE_PAD_X * 2
 CARD_INNER_W = CONTENT_WIDTH - CARD_PAD * 2
 
@@ -166,12 +166,12 @@ def _draw_sub_cell(
     x, y = xy
     canvas.alpha_composite(SUB_CELL_BG, (x, y))
     cy = y + SUB_CELL_H // 2
-    icon_x = x + round(1 * SCALE)
+    icon_x = x + vw(1)
     if icon is not None:
         canvas.alpha_composite(icon, (icon_x, cy - SUB_TYPE_ICON // 2))
-    text_x = icon_x + SUB_TYPE_ICON + round(2 * SCALE)
+    text_x = icon_x + SUB_TYPE_ICON + vw(2)
     text_max_w = SUB_CELL_W - (text_x - x) - SUB_RIGHT_PAD
-    name_y = cy - round(8 * SCALE)
+    name_y = cy - vw(8)
     draw.text(
         (text_x, name_y),
         _truncate(draw, sub.name, sub_name_font, text_max_w),
@@ -179,12 +179,12 @@ def _draw_sub_cell(
         fill=COLOR_SUB_NAME,
         anchor="lm",
     )
-    found_y = cy + round(8 * SCALE)
+    found_y = cy + vw(8)
     progress = 0 if sub.progress is None else sub.progress
     label_w = draw.textlength("已发现:", font=sub_name_font)
     draw.text((text_x, found_y), "已发现:", font=sub_name_font, fill=COLOR_SUB_FOUND_LABEL, anchor="lm")
     draw.text(
-        (text_x + label_w + round(2 * SCALE), found_y),
+        (text_x + label_w + vw(2), found_y),
         f"{progress}/{sub.total}",
         font=sub_value_font,
         fill=COLOR_SUB_VALUE,
@@ -241,7 +241,7 @@ def _draw_card(
     right_block_cx = right_block_x + BIG_NUM_BLOCK_W // 2
     num_h = sum(big_num_font.getmetrics())
     label_h = sum(big_label_font.getmetrics())
-    right_top_y = band_center_y - (num_h + round(2 * SCALE) + label_h) // 2
+    right_top_y = band_center_y - (num_h + vw(2) + label_h) // 2
     draw.text(
         (right_block_cx, right_top_y),
         str(item.area.progress),
@@ -250,7 +250,7 @@ def _draw_card(
         anchor="mt",
     )
     draw.text(
-        (right_block_cx, right_top_y + num_h + round(2 * SCALE)),
+        (right_block_cx, right_top_y + num_h + vw(2)),
         "探索值",
         font=big_label_font,
         fill=COLOR_BIG_LABEL,
@@ -259,9 +259,9 @@ def _draw_card(
 
     # 左块（pin + 区域名 + 进度条）
     left_x = inner_x + INFO_BLOCK_LEFT_MARGIN
-    left_w = right_block_x - left_x - round(8 * SCALE)
+    left_w = right_block_x - left_x - vw(8)
     name_h = max(PIN_SIZE, sum(name_font.getmetrics()))
-    left_top_y = band_center_y - (name_h + round(3 * SCALE) + PROGRESS_BAR_HEIGHT) // 2
+    left_top_y = band_center_y - (name_h + vw(3) + PROGRESS_BAR_HEIGHT) // 2
     canvas.alpha_composite(PIN_ICON, (left_x, left_top_y + (name_h - PIN_SIZE) // 2))
     draw.text(
         (left_x + PIN_SIZE + NAME_GAP, left_top_y + name_h // 2),
@@ -270,7 +270,7 @@ def _draw_card(
         fill=COLOR_NAME_PINK,
         anchor="lm",
     )
-    progress_y = left_top_y + name_h + round(3 * SCALE)
+    progress_y = left_top_y + name_h + vw(3)
     ratio = (item.area.progress / item.area.total) if item.area.total else 0
     _draw_progress_bar(canvas, (left_x, progress_y), left_w, ratio)
 

@@ -21,7 +21,12 @@ _AUTH_STATUSES = {401, 402, 403}
 
 async def ensure_tajiduo_client(user: NTEUser) -> TajiduoClient:
     """返回带可用 access_token 的 client。DB 缓存未过 TTL 直接复用、零网络；
-    超 TTL 或无缓存时调一次 refresh 并落库。refresh 失败的 TajiduoError 透传给调用方。"""
+    超 TTL 或无缓存时调一次 refresh 并落库。refresh 失败的 TajiduoError 透传给调用方。
+
+    注意：`TajiduoClient.from_user` 只带 refresh_token，本函数会按需把 access_token
+    回写到 client 实例字段（缓存路径直接 mutate；refresh 路径由 `refresh_session()`
+    内部更新）——这是与 `from_user` 配对使用的约定。
+    """
     client = TajiduoClient.from_user(user)
     if _access_token_fresh(user):
         client.access_token = user.access_token
@@ -110,10 +115,13 @@ async def report_call_error(
     await send_nte_notify(bot, ev, load_failed_msg)
 
 
-class session_call:
+class SessionCall:
     """`open_session` + 业务调用 `TajiduoError` 兜底合一的 async cm。
+
     `__aenter__` 返回 `None` 表示未登录或 refresh 失败（用户提示已发，body 直接 `return`）；
-    返回 `(user, client)` 时 body 内的 `TajiduoError` 由 `__aexit__` 走 report_call_error 分流并吞掉。"""
+    返回 `(user, client)` 时 body 内若抛 `TajiduoError`，`__aexit__` 走
+    `report_call_error` 按 401/402/403 → LOGIN_EXPIRED、其它 → LOAD_FAILED 分流并吞掉
+    （返回 True 抑制异常）。其它异常照常传播。"""
 
     def __init__(
         self,

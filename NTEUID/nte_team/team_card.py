@@ -8,10 +8,10 @@ from PIL import Image, ImageOps, ImageDraw
 from gsuid_core.utils.image.convert import convert_img
 
 from ..utils.image import (
-    VW_SCALE as SCALE,
     COLOR_WHITE,
     COLOR_OVERLAY,
     COLOR_SUBTEXT,
+    vw,
     add_footer,
     cache_name,
     get_nte_bg,
@@ -32,22 +32,22 @@ HEADER_HEIGHT = 152
 FOOTER_RESERVE = 80  # 底部给 add_footer 留位（footer 贴底 20px + 自身高 47px + 余量）
 TEXTURE_PATH = Path(__file__).parent / "texture2d"
 
-SECTION_GAP = round(20 * SCALE)
-HEADER_IMAGE_GAP = round(10 * SCALE)
-TITLE_SUB_GAP = round(2 * SCALE)
-ICON_TEXT_GAP = round(2 * SCALE)
-ICON_SIZE = round(18 * SCALE)
-TITLE_FONT_SIZE = round(18 * SCALE)
-SUBTITLE_FONT_SIZE = max(10, round(4 * SCALE))
-DESC_FONT_SIZE = round(13 * SCALE)
-DESC_BOX_PAD_X = round(6 * SCALE)
-DESC_BOX_PAD_Y = round(10 * SCALE)
-DESC_BOX_GAP = round(10 * SCALE)
-DESC_LINE_GAP = round(3 * SCALE)
-DESC_RADIUS_SMALL = round(2 * SCALE)
-DESC_RADIUS_LARGE = round(12 * SCALE)
-INTER_REC_GAP = round(28 * SCALE)
-PAGE_PAD_X = round(15 * SCALE)
+SECTION_GAP = vw(20)
+HEADER_IMAGE_GAP = vw(10)
+TITLE_SUB_GAP = vw(2)
+ICON_TEXT_GAP = vw(2)
+ICON_SIZE = vw(18)
+TITLE_FONT_SIZE = vw(18)
+SUBTITLE_FONT_SIZE = max(10, vw(4))
+DESC_FONT_SIZE = vw(13)
+DESC_BOX_PAD_X = vw(6)
+DESC_BOX_PAD_Y = vw(10)
+DESC_BOX_GAP = vw(10)
+DESC_LINE_GAP = vw(3)
+DESC_RADIUS_SMALL = vw(2)
+DESC_RADIUS_LARGE = vw(12)
+INTER_REC_GAP = vw(28)
+PAGE_PAD_X = vw(15)
 CONTENT_WIDTH = WIDTH - PAGE_PAD_X * 2
 DESC_TEXT_WIDTH = CONTENT_WIDTH - DESC_BOX_PAD_X * 2
 

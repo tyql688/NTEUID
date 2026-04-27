@@ -6,14 +6,14 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
 from ..utils.msgs import SignMsg, send_nte_notify
-from ..utils.session import session_call
+from ..utils.session import SessionCall
 from .sign_calendar_card import draw_sign_calendar_img
 
 TAG = "签到日历"
 
 
 async def run_sign_calendar(bot: Bot, ev: Event, game_id: str) -> None:
-    async with session_call(
+    async with SessionCall(
         bot,
         ev,
         tag=TAG,
