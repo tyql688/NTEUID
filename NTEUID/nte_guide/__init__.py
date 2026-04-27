@@ -10,4 +10,4 @@ sv_nte_guide = SV("nte攻略")
 
 @sv_nte_guide.on_regex(rf"^(?P<char_name>{COMMAND_NAME_PATTERN})攻略$", block=True)
 async def nte_guide_cmd(bot: Bot, ev: Event):
-    await get_guide(bot, ev, ev.regex_dict.get("char_name", ""))
+    await get_guide(bot, ev, ev.regex_dict["char_name"])

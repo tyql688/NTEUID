@@ -243,7 +243,7 @@ _LBD_RE = re.compile(r"\{(\d+)\}")
 def _substitute_lbd(text: str, lbd: List[str]) -> str:
     """`<lv>{N}</>` 把 `{N}` 换成 `lbd[N]`；越界保留原文。lbd 为空时直接返回原文。"""
     if not text or not lbd:
-        return text or ""
+        return text
 
     def _sub(m: re.Match) -> str:
         idx = int(m.group(1))
@@ -269,7 +269,7 @@ _TAG_COLORS = {
 
 def _parse_rich_segments(text: str, default_color: Tuple[int, int, int]) -> List[Tuple[str, Tuple[int, int, int]]]:
     """解析 `<Tag>...</>` 嵌套标签为 (片段, 颜色) 列表；未识别的 tag 用 default_color；保留换行。"""
-    text = _RICH_BREAK_RE2.sub("\n", text or "").replace("\\n", "\n")
+    text = _RICH_BREAK_RE2.sub("\n", text).replace("\\n", "\n")
     segments: List[Tuple[str, Tuple[int, int, int]]] = []
     color_stack: List[Tuple[int, int, int]] = [default_color]
     i = 0
@@ -862,7 +862,7 @@ def _fork_panel_h(draw: ImageDraw.ImageDraw, fork: CharacterFork, width: int) ->
         int(fork_name_font.size) + FORK_LINE_GAP + int(fork_lv_font.size) + FORK_LINE_GAP + FORK_STAR_W,
     )
     slev_row_h = max(FORK_SLEV_BADGE_W, int(fork_buff_name_font.size))
-    chips = fork.properties or []
+    chips = fork.properties
     chip_h = FORK_PROP_ICON_W + FORK_PROP_CHIP_PAD_Y * 2 if chips else 0
     buff_h = 0
     if fork.buff_des:
@@ -896,7 +896,7 @@ async def _draw_fork_chip(
     """K5：bg-#CCCCCC rounded， icon + name + +value。"""
     x, y = xy
     icon = _resize(await get_char_property_img(prop.id), FORK_PROP_ICON_W)
-    name = prop.name or ""
+    name = prop.name
     value = f"+{_format_value(prop.value)}"
     pad = FORK_PROP_CHIP_PAD_X
     name_w = round(draw.textlength(name, font=fork_chip_font))
@@ -949,11 +949,11 @@ async def _draw_fork(
     if group_img is not None:
         canvas.alpha_composite(group_img, (right_x, right_y + vw(2)))
     name_x = right_x + (FORK_GROUP_ICON_W if group_img is not None else 0) + FORK_NAME_ML
-    draw.text((name_x, right_y + vw(2)), fork.name or "", font=fork_name_font, fill=COLOR_BODY_TEXT, anchor="lt")
+    draw.text((name_x, right_y + vw(2)), fork.name, font=fork_name_font, fill=COLOR_BODY_TEXT, anchor="lt")
     lv_y = right_y + max(FORK_GROUP_ICON_W, int(fork_name_font.size)) + vw(4)
     draw.text(
         (right_x, lv_y),
-        f"Lv.{fork.slev or 0}/{fork.alev or 0}",
+        f"Lv.{fork.slev}/{fork.alev}",
         font=fork_lv_font,
         fill=COLOR_BODY_TEXT,
         anchor="lt",
@@ -968,7 +968,7 @@ async def _draw_fork(
     cursor_y = body_y + info_h_max + FORK_GAP_Y
 
     # slev 圆徽 + 「混频X阶」 + buffName + 横线
-    slev_str = str(fork.slev or 0)
+    slev_str = fork.slev
     badge = Image.new("RGBA", (FORK_SLEV_BADGE_W, FORK_SLEV_BADGE_W), (0, 0, 0, 0))
     bd = ImageDraw.Draw(badge)
     bd.ellipse((0, 0, FORK_SLEV_BADGE_W - 1, FORK_SLEV_BADGE_W - 1), fill=COLOR_FORK_SLEV_BG)
@@ -1042,8 +1042,8 @@ async def _draw_drive_card(
     # 顶部 row
     top_inner_h = DRIVE_ICON_BG_W
     # 内嵌属性 panel
-    main_props = item.main_properties or []
-    add_props = item.properties or []
+    main_props = item.main_properties
+    add_props = item.properties
     main_h = (int(drive_title_font.size) + vw(1)) + max(1, len(main_props)) * DRIVE_PROP_ROW_H if main_props else 0
     add_h = (int(drive_title_font.size) + vw(2)) + max(1, len(add_props)) * DRIVE_PROP_ROW_H if add_props else 0
     inner_h = main_h + add_h + (vw(1) if main_h and add_h else 0)
@@ -1063,7 +1063,7 @@ async def _draw_drive_card(
             (top_x + (DRIVE_ICON_BG_W - DRIVE_ICON_W) // 2, top_y + (DRIVE_ICON_BG_W - DRIVE_ICON_W) // 2),
         )
     name_x = top_x + DRIVE_ICON_BG_W + vw(3)
-    draw.text((name_x, top_y + vw(2)), item.name or "", font=drive_name_font, fill=COLOR_BODY_TEXT, anchor="lt")
+    draw.text((name_x, top_y + vw(2)), item.name, font=drive_name_font, fill=COLOR_BODY_TEXT, anchor="lt")
     pill_text = f"+{item.lev}"
     pill_w = round(draw.textlength(pill_text, font=drive_lev_font)) + DRIVE_LEV_PAD_X * 2
     pill_h = int(drive_lev_font.size) + DRIVE_LEV_PAD_Y * 2
@@ -1128,7 +1128,7 @@ async def _draw_drive_prop_row(
         canvas.alpha_composite(icon, (icon_x, y + (DRIVE_PROP_ROW_H - DRIVE_PROP_ICON_W) // 2))
     draw.text(
         (icon_x + DRIVE_PROP_ICON_W + vw(3), y + DRIVE_PROP_ROW_H // 2),
-        _truncate(draw, prop.name or "", drive_prop_name_font, width - vw(80)),
+        _truncate(draw, prop.name, drive_prop_name_font, width - vw(80)),
         font=drive_prop_name_font,
         fill=COLOR_BODY_TEXT2,
         anchor="lm",
@@ -1163,8 +1163,8 @@ def _suit_section_h(suit: CharacterSuit, width: int) -> int:
 
 
 def _drive_card_h(item: CharacterSuitItem) -> int:
-    main_props = item.main_properties or []
-    add_props = item.properties or []
+    main_props = item.main_properties
+    add_props = item.properties
     main_h = (int(drive_title_font.size) + vw(1)) + max(1, len(main_props)) * DRIVE_PROP_ROW_H if main_props else 0
     add_h = (int(drive_title_font.size) + vw(2)) + max(1, len(add_props)) * DRIVE_PROP_ROW_H if add_props else 0
     inner_h = main_h + add_h + (vw(1) if main_h and add_h else 0)

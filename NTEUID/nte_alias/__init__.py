@@ -17,9 +17,9 @@ async def nte_role_alias_action(bot: Bot, ev: Event):
     await run_char_alias_action(
         bot,
         ev,
-        ev.regex_dict.get("action", ""),
-        ev.regex_dict.get("char_name", ""),
-        ev.regex_dict.get("new_alias", ""),
+        ev.regex_dict["action"],
+        ev.regex_dict["char_name"],
+        ev.regex_dict["new_alias"],
     )
 
 
@@ -28,4 +28,4 @@ async def nte_role_alias_action(bot: Bot, ev: Event):
     block=True,
 )
 async def nte_role_alias(bot: Bot, ev: Event):
-    await run_char_alias_list(bot, ev, ev.regex_dict.get("char_name", ""))
+    await run_char_alias_list(bot, ev, ev.regex_dict["char_name"])

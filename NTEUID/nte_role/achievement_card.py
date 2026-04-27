@@ -186,7 +186,7 @@ async def draw_achievement_img(ev: Event, progress: AchievementProgress, role_na
     user_avatar = await get_event_avatar(ev)
 
     inner_w = WIDTH - PADDING * 2 - OUTER_PAD_X * 2
-    items = progress.detail or []
+    items = progress.detail
 
     header_bg_h = round(HEADER_BG.height * inner_w / HEADER_BG.width)
     item_bg_h = round(ITEM_BG.height * inner_w / ITEM_BG.width)

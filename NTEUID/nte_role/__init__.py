@@ -52,7 +52,7 @@ async def nte_role_refresh(bot: Bot, ev: Event):
     block=True,
 )
 async def nte_role_detail(bot: Bot, ev: Event):
-    await run_character_detail(bot, ev, ev.regex_dict.get("char_name", ""))
+    await run_character_detail(bot, ev, ev.regex_dict["char_name"])
 
 
 @sv_nte_achievement.on_fullmatch(("成就进度", "成就"))

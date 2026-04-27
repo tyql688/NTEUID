@@ -180,7 +180,7 @@ def _draw_sub_cell(
         anchor="lm",
     )
     found_y = cy + round(8 * SCALE)
-    progress = sub.progress or 0
+    progress = 0 if sub.progress is None else sub.progress
     label_w = draw.textlength("已发现:", font=sub_name_font)
     draw.text((text_x, found_y), "已发现:", font=sub_name_font, fill=COLOR_SUB_FOUND_LABEL, anchor="lm")
     draw.text(

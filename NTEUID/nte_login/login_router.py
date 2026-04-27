@@ -34,7 +34,7 @@ def _json(result: LoginResult) -> JSONResponse:
 
 def _login_user_id(auth_token: str) -> str:
     state: Optional[LoginState] = LOGIN_CACHE.get(auth_token)
-    return state.user_id if state else auth_token
+    return state.user_id if state else "unknown"
 
 
 class _SendSmsPayload(BaseModel):

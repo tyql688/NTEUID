@@ -14,8 +14,6 @@ LIST_COUNT = 4
 FETCH_COUNT = 4
 NOTICE_TYPES = (NTENoticeType.INFO, NTENoticeType.ACTIVITY, NTENoticeType.NOTICE)
 
-_NOTICE_ID_MAP: dict[int, NTENoticeType] = {}
-
 
 async def get_notice(bot: Bot, ev: Event):
     text = ev.text.strip().replace("#", "")
@@ -25,15 +23,12 @@ async def get_notice(bot: Bot, ev: Event):
             columns = await get_all_notice_list()
             if not any(columns.values()):
                 return await send_nte_notify(bot, ev, NoticeMsg.EMPTY)
-
-            _refresh_notice_id_map(columns)
             return await bot.send(await draw_notice_list_img(render_notice_list(columns)))
 
         if not text.isdigit():
             return await send_nte_notify(bot, ev, NoticeMsg.INVALID_POST_ID)
-        post_id, notice_type = _parse_notice_target(text)
-        post = await tajiduo_web.get_notice_detail(post_id)
-        img = await draw_notice_detail_img(*render_notice_detail(post, notice_type))
+        post = await tajiduo_web.get_notice_detail(int(text))
+        img = await draw_notice_detail_img(*render_notice_detail(post))
         return await bot.send(img)  # pyright: ignore[reportArgumentType]
     except TajiduoError as error:
         logger.warning(f"[异环公告] 拉取公告失败: {error.message}")
@@ -53,20 +48,8 @@ def render_notice_list(columns: dict[NTENoticeType, list[NoticePost]]) -> dict[s
     }
 
 
-def render_notice_detail(post: NoticePost, notice_type: NTENoticeType | None) -> tuple[str, NoticePost]:
-    return (notice_type.label if notice_type else "公告"), post
-
-
-def _refresh_notice_id_map(columns: dict[NTENoticeType, list[NoticePost]]) -> None:
-    _NOTICE_ID_MAP.clear()
-    for notice_type, posts in columns.items():
-        for post in posts:
-            _NOTICE_ID_MAP[post.post_id] = notice_type
-
-
-def _parse_notice_target(text: str) -> tuple[int, NTENoticeType | None]:
-    post_id = int(text)
-    return post_id, _NOTICE_ID_MAP.get(post_id)
+def render_notice_detail(post: NoticePost) -> tuple[NoticePost]:
+    return (post,)
 
 
 def _to_list_item(post: NoticePost) -> tuple[str, str, str, str]:

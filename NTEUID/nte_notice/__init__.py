@@ -8,7 +8,7 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.subscribe import gs_subscribe
 
-from .notice import get_notice, get_all_notice_list, render_notice_detail
+from .notice import get_notice, get_all_notice_list
 from ..utils.msgs import NoticeMsg, send_nte_notify
 from .notice_card import draw_notice_detail_img
 from ..utils.sdk.tajiduo import tajiduo_web
@@ -70,19 +70,19 @@ async def check_nte_notice_state():
         return
 
     columns = await get_all_notice_list()
-    flat = [(notice_type, post) for notice_type, posts in columns.items() for post in posts]
+    flat = [post for posts in columns.values() for post in posts]
     if not flat:
         return
 
     known_ids: list[int] = NTEConfig.get_config("NTEAnnIds").data
-    fresh_ids = [post.post_id for _, post in flat]
+    fresh_ids = [post.post_id for post in flat]
 
     if not known_ids:
         NTEConfig.set_config("NTEAnnIds", fresh_ids)
         logger.info("[异环公告] 初始成功, 将在下个轮询中更新.")
         return
 
-    pending = [(notice_type, post) for notice_type, post in flat if post.post_id not in known_ids]
+    pending = [post for post in flat if post.post_id not in known_ids]
     if not pending:
         logger.info("[异环公告] 没有最新公告")
         return
@@ -90,10 +90,10 @@ async def check_nte_notice_state():
     merged = sorted(set(known_ids) | set(fresh_ids), reverse=True)[:50]
     NTEConfig.set_config("NTEAnnIds", merged)
 
-    for notice_type, post in reversed(pending):
+    for post in reversed(pending):
         try:
             detail = await tajiduo_web.get_notice_detail(post.post_id)
-            img = await draw_notice_detail_img(*render_notice_detail(detail, notice_type))
+            img = await draw_notice_detail_img(detail)
         except TajiduoError as error:
             logger.warning(f"[异环公告] 拉取详情失败 postId={post.post_id}: {error}")
             continue

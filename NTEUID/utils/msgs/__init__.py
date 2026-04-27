@@ -120,6 +120,21 @@ class GuideMsg:
     EMPTY = "角色【{char_name}】暂无攻略图"
 
 
+class AliasMsg:
+    EMPTY_NAME_OR_ALIAS = "名称或别名不能为空"
+    INVALID_ACTION = "无效的操作，请检查操作"
+    CHAR_NOT_FOUND = "角色【{char_name}】不存在，请检查名称"
+    ALIAS_IN_USE = "别名【{alias}】已被角色【{char_name}】占用"
+    ALIAS_NOT_REMOVABLE = "别名【{alias}】不存在或为预置别名，无法删除"
+    ADD_SUCCESS = "成功为角色【{char_name}】添加别名【{alias}】"
+    DEL_SUCCESS = "成功为角色【{char_name}】删除别名【{alias}】"
+
+    @classmethod
+    def usage_list(cls) -> str:
+        p = nte_prefix()
+        return f"用法：{p}<角色名>别名 或 {p}<角色名>别名列表，例如 {p}娜娜莉别名"
+
+
 class NoticeMsg:
     SUBSCRIBE_GROUP_ONLY = "请在群聊中订阅"
     UNSUBSCRIBE_GROUP_ONLY = "请在群聊中取消订阅"

@@ -253,9 +253,9 @@ class CharacterFork(_TajiduoModel):
 
     id: str = ""
     name: str = ""
-    alev: str = ""
-    blev: str = ""
-    slev: str = ""
+    alev: str = "0"
+    blev: str = "0"
+    slev: str = "0"
     quality: Optional[CharQuality] = None
     group_type: Optional[CharGroup] = Field(None, alias="groupType")
     des: str = ""

@@ -210,7 +210,7 @@ async def draw_notice_list_img(columns: dict[str, list[tuple[str, str, str, str]
     return await convert_img(canvas)
 
 
-async def draw_notice_detail_img(_notice_type: str, post: NoticePost):
+async def draw_notice_detail_img(post: NoticePost):
     subject = post.subject
     time_text = format_post_time(post.create_time)
     author = post.author_name

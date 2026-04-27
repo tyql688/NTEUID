@@ -1,7 +1,7 @@
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
-from ..utils.msgs import RoleMsg, send_nte_notify
+from ..utils.msgs import AliasMsg, send_nte_notify
 from ..utils.name_convert import (
     load_char_meta,
     alias_to_char_name,
@@ -20,14 +20,14 @@ async def run_char_alias_action(
     new_alias: str,
 ) -> None:
     if not char_name or not new_alias:
-        return await send_nte_notify(bot, ev, "名称或别名不能为空")
+        return await send_nte_notify(bot, ev, AliasMsg.EMPTY_NAME_OR_ALIAS)
 
     std_char_name = alias_to_char_name(char_name)
     if not std_char_name:
-        return await send_nte_notify(bot, ev, f"角色【{char_name}】不存在，请检查名称")
+        return await send_nte_notify(bot, ev, AliasMsg.CHAR_NOT_FOUND.format(char_name=char_name))
     char_id = char_name_to_char_id(std_char_name)
     if not char_id:
-        return await send_nte_notify(bot, ev, f"角色【{char_name}】不存在，请检查名称")
+        return await send_nte_notify(bot, ev, AliasMsg.CHAR_NOT_FOUND.format(char_name=char_name))
 
     user_file = load_user_char_aliases()
 
@@ -37,7 +37,7 @@ async def run_char_alias_action(
             return await send_nte_notify(
                 bot,
                 ev,
-                f"别名【{new_alias}】已被角色【{check_new_alias}】占用",
+                AliasMsg.ALIAS_IN_USE.format(alias=new_alias, char_name=check_new_alias),
             )
 
         user_file.root.setdefault(char_id, []).append(new_alias)
@@ -46,7 +46,7 @@ async def run_char_alias_action(
         return await send_nte_notify(
             bot,
             ev,
-            f"成功为角色【{std_char_name}】添加别名【{new_alias}】",
+            AliasMsg.ADD_SUCCESS.format(char_name=std_char_name, alias=new_alias),
         )
 
     if action == "删除":
@@ -55,7 +55,7 @@ async def run_char_alias_action(
             return await send_nte_notify(
                 bot,
                 ev,
-                f"别名【{new_alias}】不存在或为预置别名，无法删除",
+                AliasMsg.ALIAS_NOT_REMOVABLE.format(alias=new_alias),
             )
 
         user_aliases.remove(new_alias)
@@ -66,23 +66,23 @@ async def run_char_alias_action(
         return await send_nte_notify(
             bot,
             ev,
-            f"成功为角色【{std_char_name}】删除别名【{new_alias}】",
+            AliasMsg.DEL_SUCCESS.format(char_name=std_char_name, alias=new_alias),
         )
 
-    return await send_nte_notify(bot, ev, "无效的操作，请检查操作")
+    return await send_nte_notify(bot, ev, AliasMsg.INVALID_ACTION)
 
 
 async def run_char_alias_list(bot: Bot, ev: Event, char_name: str) -> None:
     if not char_name:
-        return await send_nte_notify(bot, ev, RoleMsg.usage_detail())
+        return await send_nte_notify(bot, ev, AliasMsg.usage_list())
 
     std_char_name = alias_to_char_name(char_name)
     if not std_char_name:
-        return await send_nte_notify(bot, ev, RoleMsg.CHAR_NOT_FOUND)
+        return await send_nte_notify(bot, ev, AliasMsg.CHAR_NOT_FOUND.format(char_name=char_name))
 
     alias_list = alias_to_char_name_list(char_name)
     if not alias_list:
-        return await send_nte_notify(bot, ev, RoleMsg.CHAR_NOT_FOUND)
+        return await send_nte_notify(bot, ev, AliasMsg.CHAR_NOT_FOUND.format(char_name=char_name))
 
     await send_nte_notify(
         bot,
