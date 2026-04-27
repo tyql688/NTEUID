@@ -81,7 +81,7 @@ class BaseSdkClient:
             if candidate:
                 proxy = candidate
         try:
-            async with httpx.AsyncClient(timeout=self.timeout, proxy=proxy) as client:
+            async with httpx.AsyncClient(timeout=self.timeout, proxy=proxy, trust_env=False) as client:
                 resp = await client.request(
                     method,
                     f"{self.BASE_URL}{path}",
