@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import random
-from typing import Optional
 from pathlib import Path
 from dataclasses import dataclass
 
@@ -70,9 +69,9 @@ class _CharStat:
     awaken: int
     quality: CharQuality
     element: CharElement
-    avatar: Optional[Image.Image]
-    element_icon: Optional[Image.Image]
-    group_icon: Optional[Image.Image]
+    avatar: Image.Image | None
+    element_icon: Image.Image | None
+    group_icon: Image.Image | None
 
 
 def _pick_area_bg(index: int) -> Image.Image:

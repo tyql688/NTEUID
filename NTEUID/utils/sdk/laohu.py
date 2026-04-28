@@ -4,7 +4,7 @@ import time
 import uuid
 import hashlib
 from base64 import b64encode
-from typing import Any, Dict, Optional
+from typing import Any
 from dataclasses import field, dataclass
 
 from .base import SdkError, BaseSdkClient
@@ -80,7 +80,7 @@ class LaohuClient(BaseSdkClient):
         channel_id: int = 1,
         package: str = LAOHU_DEFAULT_PACKAGE,
         version_code: int = LAOHU_DEFAULT_VERSION_CODE,
-        device: Optional[LaohuDevice] = None,
+        device: LaohuDevice | None = None,
         timeout: float = BaseSdkClient.timeout,
     ):
         if len(app_key) < 16:
@@ -101,11 +101,11 @@ class LaohuClient(BaseSdkClient):
         cipher = AES.new(self._aes_key, AES.MODE_ECB)
         return b64encode(cipher.encrypt(pad(plain.encode(), AES.block_size))).decode()
 
-    def _sign(self, params: Dict[str, str]) -> str:
+    def _sign(self, params: dict[str, str]) -> str:
         raw = "".join(params[key] for key in sorted(params)) + self.app_key
         return hashlib.md5(raw.encode()).hexdigest()
 
-    def _common_fields(self, *, use_millis: bool) -> Dict[str, str]:
+    def _common_fields(self, *, use_millis: bool) -> dict[str, str]:
         device = self.device
         ts = int(time.time() * 1000) if use_millis else int(time.time())
         base = {
@@ -130,7 +130,7 @@ class LaohuClient(BaseSdkClient):
             base["imei"] = device.imei
         return base
 
-    def _extract_data(self, payload: Dict[str, Any], path: str) -> Any:
+    def _extract_data(self, payload: dict[str, Any], path: str) -> Any:
         """laohu 用 `{code, message, result}` 结构（字段名和 base 不一样，必须覆盖）。"""
         if payload.get("code") not in (0, "0"):
             raise self.error_cls(f"[{path}] {payload.get('message', '')}", payload)
@@ -139,7 +139,7 @@ class LaohuClient(BaseSdkClient):
     async def _submit(
         self,
         path: str,
-        params: Dict[str, str],
+        params: dict[str, str],
         *,
         method: str = "POST",
         keep_empty: bool = False,

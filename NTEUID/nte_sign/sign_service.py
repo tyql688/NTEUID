@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 import asyncio
-from typing import Dict, List, Tuple, Optional
 
 from gsuid_core.logger import logger
 
@@ -42,7 +41,7 @@ _TASK_LABELS = {
 }
 
 
-async def sign_account(users: List[NTEUser]) -> str:
+async def sign_account(users: list[NTEUser]) -> str:
     """单账号完整签到：refresh → App 签 → 角色游戏签 → 社区任务。
     假设调用方已持有该 center_uid 的账号级锁，内部不再加锁。
     """
@@ -53,7 +52,7 @@ async def sign_account(users: List[NTEUser]) -> str:
     if client is None:
         return f"{header}\n  · {SignMsg.login_expired()}"
 
-    lines: List[str] = [header, f"  · {await _app_sign(client, primary.center_uid)}"]
+    lines: list[str] = [header, f"  · {await _app_sign(client, primary.center_uid)}"]
     disabled_games = {
         gid
         for gid, switch in GAME_SIGN_SWITCHES.items()
@@ -117,7 +116,7 @@ async def _game_sign(client: TajiduoClient, user: NTEUser) -> str:
     return _fmt(label, STATUS_OK)
 
 
-async def _daily_tasks(client: TajiduoClient, center_uid: str) -> List[str]:
+async def _daily_tasks(client: TajiduoClient, center_uid: str) -> list[str]:
     try:
         return await _run_daily_tasks(client, center_uid)
     except TajiduoError as error:
@@ -125,7 +124,7 @@ async def _daily_tasks(client: TajiduoClient, center_uid: str) -> List[str]:
         return [_fmt("社区任务", STATUS_FAIL, "稍后再试")]
 
 
-async def _run_daily_tasks(client: TajiduoClient, center_uid: str) -> List[str]:
+async def _run_daily_tasks(client: TajiduoClient, center_uid: str) -> list[str]:
     """先按本地 NTESignRecord 幂等短路；只有存在未完成子任务时才拉远程 task 列表。
     `like_post` 返回 True 只代表动作成功，不必然等于服务端任务计数 +1；本地落库
     后同日不再重新跑，避免"远程计数滞后→UI 显示 ✅ 但其实没入账"的错觉。
@@ -135,12 +134,12 @@ async def _run_daily_tasks(client: TajiduoClient, center_uid: str) -> List[str]:
     if not enabled_keys:
         return []
 
-    local_done: Dict[str, bool] = {}
+    local_done: dict[str, bool] = {}
     for key in enabled_keys:
         local_done[key] = await NTESignRecord.is_signed(center_uid, SIGN_KIND_TASK_PREFIX + key)
 
     pending_keys = [key for key in enabled_keys if not local_done[key]]
-    tasks_by_key: Dict[str, UserTask] = {}
+    tasks_by_key: dict[str, UserTask] = {}
     if pending_keys:
         tasks = await client.get_user_tasks()
         tasks_by_key = {t.task_key: t for t in tasks.daily if t.task_key in pending_keys}
@@ -149,8 +148,8 @@ async def _run_daily_tasks(client: TajiduoClient, center_uid: str) -> List[str]:
     delay_window = _delay_window("NTETaskActionDelay")
     needed = sum(t.remaining for t in tasks_by_key.values() if not t.finished)
 
-    post_ids: Optional[List[str]] = None
-    lines: List[str] = []
+    post_ids: list[str] | None = None
+    lines: list[str] = []
     for key in enabled_keys:
         label = _TASK_LABELS[key]
         if local_done[key]:
@@ -208,10 +207,10 @@ async def _run_daily_tasks(client: TajiduoClient, center_uid: str) -> List[str]:
 async def _advance_task(
     client: TajiduoClient,
     task: UserTask,
-    post_ids: List[str],
+    post_ids: list[str],
     max_failures: int,
-    delay: Tuple[float, float],
-) -> Tuple[int, int]:
+    delay: tuple[float, float],
+) -> tuple[int, int]:
     """返回 (成功推进次数, 累计失败数)。连续失败 ≥ max_failures 即熔断。
     `like_post` 返回 False 表示该帖已点过、本次不计入——视作"此帖不可推进"，
     跳到下一帖，不计 done 也不累加失败。
@@ -248,12 +247,12 @@ async def _advance_task(
     return done, total_fail
 
 
-async def _collect_post_ids(client: TajiduoClient, needed: int = 20) -> List[str]:
+async def _collect_post_ids(client: TajiduoClient, needed: int = 20) -> list[str]:
     """拉帖子列表，若首页可用帖子不足则翻到 page=2。已浏览 / 已点赞过的帖子
     后端仍会返回、但对应任务会返回 False 或 200 无效果，所以这里只做去重 + 翻页，
     具体可用性交给 `_advance_task` 处理。
     """
-    ids: List[str] = []
+    ids: list[str] = []
     seen: set[str] = set()
     for community_id in YIHUAN_TASK_COMMUNITY_IDS:
         for page in (1, 2):
@@ -270,7 +269,7 @@ async def _collect_post_ids(client: TajiduoClient, needed: int = 20) -> List[str
     return ids
 
 
-def _delay_window(config_key: str) -> Tuple[float, float]:
+def _delay_window(config_key: str) -> tuple[float, float]:
     lo, hi = NTEConfig.get_config(config_key).data
     return float(lo), float(hi)
 
@@ -280,7 +279,7 @@ def _is_already_signed(error: TajiduoError) -> bool:
 
 
 def _format_app_rewards(result: CommunitySignResult) -> str:
-    rewards: List[str] = []
+    rewards: list[str] = []
     if result.exp:
         rewards.append(f"exp+{result.exp}")
     if result.gold_coin:

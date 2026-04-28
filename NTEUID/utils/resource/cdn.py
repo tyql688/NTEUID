@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import Callable, Optional, Awaitable, ParamSpec
+from typing import ParamSpec
 from pathlib import Path
 from functools import wraps
+from collections.abc import Callable, Awaitable
 
 from PIL import Image
 
@@ -38,12 +39,12 @@ P = ParamSpec("P")
 
 def safe_load_image(
     loader: Callable[P, Awaitable[Image.Image]],
-) -> Callable[P, Awaitable[Optional[Image.Image]]]:
+) -> Callable[P, Awaitable[Image.Image | None]]:
     """装饰 cdn loader：OSError 返回 None，并统一转 RGBA。
-    调用方按 `Optional[Image.Image]` 处理，None 走占位逻辑。"""
+    调用方按 `Image.Image | None` 处理，None 走占位逻辑。"""
 
     @wraps(loader)
-    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Optional[Image.Image]:
+    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> Image.Image | None:
         try:
             image = await loader(*args, **kwargs)
         except OSError:

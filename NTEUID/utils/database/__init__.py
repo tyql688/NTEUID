@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 import json
-from typing import Any, Dict, List, Type, Tuple, TypeVar, Optional, cast
+from typing import Any, TypeVar, cast
 from datetime import datetime
 
 from sqlmodel import Field, col, select
@@ -31,7 +33,7 @@ class NTEUser(User, table=True):
     在同账号内是冗余相同的——签到时按 center_uid 分组，一次 refresh 复用于全部角色。
     """
 
-    __table_args__: Dict[str, Any] = {"extend_existing": True}
+    __table_args__: dict[str, Any] = {"extend_existing": True}
     cookie: str = Field(default="", title="refreshToken")
     uid: str = Field(default="", title="角色roleId")
     center_uid: str = Field(default="", title="塔吉多用户中心uid")
@@ -42,7 +44,7 @@ class NTEUser(User, table=True):
     laohu_user_id: str = Field(default="", title="laohu userId")
     auto_sign: str = Field(default="off", title="是否参与定时签到")
     access_token: str = Field(default="", title="accessToken 缓存")
-    access_token_updated_at: Optional[datetime] = Field(default=None, title="accessToken 更新时间")
+    access_token_updated_at: datetime | None = Field(default=None, title="accessToken 更新时间")
     updated_at: datetime = Field(
         default_factory=datetime.now,
         sa_column_kwargs={"onupdate": datetime.now},
@@ -52,11 +54,11 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def get_active(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
         user_id: str,
         bot_id: str,
-    ) -> Optional[T_NTEUser]:
+    ) -> T_NTEUser | None:
         """主游戏的一条真角色行（`uid != ""`）；没有就返回 None，业务层按"未登录"处理。"""
         result = await session.execute(
             select(cls)
@@ -76,11 +78,11 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def list_latest_per_account(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
         user_id: str,
         bot_id: str,
-    ) -> List[T_NTEUser]:
+    ) -> list[T_NTEUser]:
         """【刷新令牌专用】按 center_uid 去重后每账号返回 updated_at 最新一行（忽略
         status）。同 center_uid 多角色共享 cookie/laohu_token，刷一次就够了，不用每个
         角色都跑一遍。不要拿来做业务查询——这个方法返回的行可能来自任意注册游戏。
@@ -91,7 +93,7 @@ class NTEUser(User, table=True):
             .order_by(col(cls.updated_at).desc())
         )
         seen: set[str] = set()
-        unique: List[T_NTEUser] = []
+        unique: list[T_NTEUser] = []
         for row in result.scalars().all():
             if row.center_uid not in seen:
                 seen.add(row.center_uid)
@@ -101,11 +103,11 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def list_sign_targets_by_user(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
         user_id: str,
         bot_id: str,
-    ) -> List[T_NTEUser]:
+    ) -> list[T_NTEUser]:
         """【签到编排专用】列出该用户所有 (账号 × 游戏角色) 行，供签到 runner 按
         center_uid 分组跑完整签到。**会跨游戏**（异环 + 幻塔），不要用来做单游戏的
         业务查询；单用户单角色走 `get_active`。
@@ -126,9 +128,9 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def list_sign_targets_all(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
-    ) -> List[T_NTEUser]:
+    ) -> list[T_NTEUser]:
         """【签到编排专用】全库 (账号 × 游戏角色) 行，供批量 / 定时签到跑全员。
         **会跨游戏**（异环 + 幻塔），不要用来做通用"列活跃用户"查询。
         """
@@ -144,12 +146,12 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def sync_account_roles(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
         user_id: str,
         bot_id: str,
         center_uid: str,
-        entries: List[Tuple[str, str, str]],
+        entries: list[tuple[str, str, str]],
         **shared: Any,
     ) -> None:
         """一次性把某 center_uid 下的行对齐到 `entries = [(uid, role_name, game_id), ...]`：
@@ -167,7 +169,7 @@ class NTEUser(User, table=True):
                 col(cls.center_uid) == center_uid,
             )
         )
-        current: Dict[Tuple[str, str], T_NTEUser] = {(row.game_id, row.uid): row for row in result.scalars().all()}
+        current: dict[tuple[str, str], T_NTEUser] = {(row.game_id, row.uid): row for row in result.scalars().all()}
         keep = {(game_id, uid) for uid, _, game_id in entries}
 
         for key, row in current.items():
@@ -196,7 +198,7 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def update_tokens(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
         center_uid: str,
         refresh_token: str,
@@ -218,9 +220,9 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def list_sign_subscribers(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
-    ) -> List[T_NTEUser]:
+    ) -> list[T_NTEUser]:
         """【签到编排专用】全库 `auto_sign=on` 的行，定时签到"仅订阅模式"用。
         **会跨游戏**（异环 + 幻塔），不要用来做通用活跃订阅用户列表查询。
         """
@@ -237,7 +239,7 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def set_auto_sign(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
         user_id: str,
         bot_id: str,
@@ -256,12 +258,12 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def touch_account(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
         user_id: str,
         bot_id: str,
         center_uid: str,
-        when: Optional[datetime] = None,
+        when: datetime | None = None,
     ) -> int:
         """设 updated_at（默认当前）；显式 `.values(updated_at=...)` 不被 `onupdate` 覆盖，`get_active` 按 updated_at desc 选活跃账号。"""
         stmt = (
@@ -274,7 +276,7 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def delete_all(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
         user_id: str,
         bot_id: str,
@@ -290,7 +292,7 @@ class NTEUser(User, table=True):
     @classmethod
     @with_session
     async def mark_invalid_by_cookie(
-        cls: Type[T_NTEUser],
+        cls: type[T_NTEUser],
         session: AsyncSession,
         cookie: str,
         reason: str,
@@ -311,7 +313,7 @@ class NTESignRecord(BaseIDModel, table=True):
     `center_uid`——落库后同日内整段短路，不再走远程 task 列表校验。
     """
 
-    __table_args__: Dict[str, Any] = {"extend_existing": True}
+    __table_args__: dict[str, Any] = {"extend_existing": True}
     ref_id: str = Field(title="center_uid(app) 或 gameId:roleId(game)")
     kind: str = Field(title="签到类型")
     date: str = Field(default_factory=_today, title="签到日期")
@@ -320,11 +322,11 @@ class NTESignRecord(BaseIDModel, table=True):
     @classmethod
     @with_session
     async def is_signed(
-        cls: Type[T_NTESignRecord],
+        cls: type[T_NTESignRecord],
         session: AsyncSession,
         ref_id: str,
         kind: str,
-        date: Optional[str] = None,
+        date: str | None = None,
     ) -> bool:
         day = _today() if date is None else date
         result = await session.execute(
@@ -339,12 +341,12 @@ class NTESignRecord(BaseIDModel, table=True):
     @classmethod
     @with_session
     async def record(
-        cls: Type[T_NTESignRecord],
+        cls: type[T_NTESignRecord],
         session: AsyncSession,
         ref_id: str,
         kind: str,
-        payload: Optional[dict] = None,
-        date: Optional[str] = None,
+        payload: dict | None = None,
+        date: str | None = None,
     ) -> None:
         day = _today() if date is None else date
         raw_payload = {} if payload is None else payload
@@ -369,7 +371,7 @@ class NTESignRecord(BaseIDModel, table=True):
     @classmethod
     @with_session
     async def purge_before(
-        cls: Type[T_NTESignRecord],
+        cls: type[T_NTESignRecord],
         session: AsyncSession,
         date: str,
     ) -> int:

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from typing import Optional
 from dataclasses import asdict
 
 from fastapi import Request
@@ -33,7 +32,7 @@ def _json(result: LoginResult) -> JSONResponse:
 
 
 def _login_user_id(auth_token: str) -> str:
-    state: Optional[LoginState] = LOGIN_CACHE.get(auth_token)
+    state: LoginState | None = LOGIN_CACHE.get(auth_token)
     return state.user_id if state else "unknown"
 
 
@@ -50,7 +49,7 @@ class _LoginPayload(BaseModel):
 
 @app.get("/nte/i/{auth_token}")
 async def nte_login_page(auth_token: str):
-    state: Optional[LoginState] = LOGIN_CACHE.get(auth_token)
+    state: LoginState | None = LOGIN_CACHE.get(auth_token)
     if not state:
         return HTMLResponse(LoginMsg.link_expired(), status_code=404)
     if state.ok:
@@ -107,7 +106,7 @@ async def nte_perform_login(payload: _LoginPayload, _request: Request) -> JSONRe
 
 @app.get("/nte/status/{auth_token}")
 async def nte_login_status(auth_token: str) -> JSONResponse:
-    state: Optional[LoginState] = LOGIN_CACHE.get(auth_token)
+    state: LoginState | None = LOGIN_CACHE.get(auth_token)
     if not state:
         return JSONResponse({"status": "expired"})
     return JSONResponse(

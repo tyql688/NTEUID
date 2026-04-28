@@ -1,23 +1,24 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Type, Callable, ClassVar, Optional
+from typing import Any, ClassVar
+from collections.abc import Callable
 
 import httpx
 
 from gsuid_core.logger import logger
 
-_proxy_provider: Optional[Callable[[], str]] = None
+_proxy_provider: Callable[[], str] | None = None
 
 
-def set_proxy_provider(fn: Optional[Callable[[], str]]) -> None:
+def set_proxy_provider(fn: Callable[[], str] | None) -> None:
     """业务层启动时注入：避免 SDK 反向 import 配置层；fn 返回空字符串即直连。"""
     global _proxy_provider
     _proxy_provider = fn
 
 
 class SdkError(RuntimeError):
-    def __init__(self, message: str, raw: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, raw: dict[str, Any] | None = None):
         super().__init__(message)
         self.message = message
         self.raw = raw
@@ -26,10 +27,10 @@ class SdkError(RuntimeError):
 class BaseSdkClient:
     BASE_URL: ClassVar[str] = ""
     USER_AGENT: ClassVar[str] = ""
-    error_cls: ClassVar[Type[SdkError]] = SdkError
+    error_cls: ClassVar[type[SdkError]] = SdkError
     timeout: float = 20.0
 
-    def _default_headers(self) -> Dict[str, str]:
+    def _default_headers(self) -> dict[str, str]:
         return {"User-Agent": self.USER_AGENT}
 
     def _finalize_headers(
@@ -37,13 +38,13 @@ class BaseSdkClient:
         path: str,
         *,
         method: str,
-        body: Optional[Dict[str, Any]],
-        query: Optional[Dict[str, Any]],
-        headers: Dict[str, str],
-    ) -> Dict[str, str]:
+        body: dict[str, Any] | None,
+        query: dict[str, Any] | None,
+        headers: dict[str, str],
+    ) -> dict[str, str]:
         return headers
 
-    def _extract_data(self, payload: Dict[str, Any], path: str) -> Any:
+    def _extract_data(self, payload: dict[str, Any], path: str) -> Any:
         """默认按 `{code, msg, data}` 解析；子类如果字段名不同需自行覆盖。"""
         if payload.get("code") not in (0, "0"):
             raise self.error_cls(f"[{path}] {payload.get('msg', '')}", payload)
@@ -54,9 +55,9 @@ class BaseSdkClient:
         path: str,
         *,
         method: str = "GET",
-        body: Optional[Dict[str, Any]] = None,
-        query: Optional[Dict[str, Any]] = None,
-        headers: Optional[Dict[str, str]] = None,
+        body: dict[str, Any] | None = None,
+        query: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Any:
         """JSON dict 响应走 `_extract_data`；异常响应、空响应、非 JSON 响应统一抛 SDK 错误。"""
         merged = dict(self._default_headers())
@@ -75,7 +76,7 @@ class BaseSdkClient:
         tag = self.__class__.__name__
         logger.debug(f"[NTE-SDK] → {tag} {method} {self.BASE_URL}{path} query={query} body={body} headers={merged}")
 
-        proxy: Optional[str] = None
+        proxy: str | None = None
         if _proxy_provider:
             candidate = _proxy_provider()
             if candidate:

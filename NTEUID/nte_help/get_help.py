@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 import json
-from typing import Dict
 from pathlib import Path
 
 from PIL import Image
@@ -17,7 +18,7 @@ ICON_PATH = Path(__file__).parent / "icon_path"
 TEXT_PATH = Path(__file__).parent / "texture2d"
 
 
-def get_help_data() -> Dict[str, PluginHelp]:
+def get_help_data() -> dict[str, PluginHelp]:
     with open(HELP_DATA, "r", encoding="utf-8") as file:
         return json.load(file)
 

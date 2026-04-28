@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
 from datetime import timedelta
 
 from gsuid_core.bot import Bot
@@ -16,7 +15,7 @@ async def view_bindings(bot: Bot, ev: Event) -> None:
     if not rows:
         return await send_nte_notify(bot, ev, BindMsg.not_logged_in())
 
-    grouped: Dict[str, List[NTEUser]] = {}
+    grouped: dict[str, list[NTEUser]] = {}
     for row in rows:
         grouped.setdefault(row.center_uid, []).append(row)
 
@@ -54,7 +53,7 @@ async def get_laohu_tokens(bot: Bot, ev: Event) -> None:
     if not accounts:
         return await send_nte_notify(bot, ev, BindMsg.not_logged_in())
 
-    lines: List[str] = []
+    lines: list[str] = []
     for a in accounts:
         if not a.laohu_token or not a.laohu_user_id:
             continue
@@ -69,7 +68,7 @@ async def get_laohu_tokens(bot: Bot, ev: Event) -> None:
     await send_nte_notify(bot, ev, "\n".join(lines))
 
 
-def _resolve_target(target: str, accounts: List[NTEUser]) -> Optional[str]:
+def _resolve_target(target: str, accounts: list[NTEUser]) -> str | None:
     """空→次新；纯数字≤账号数→按序号；否则精确匹配 center_uid。"""
     if not target:
         return accounts[1].center_uid

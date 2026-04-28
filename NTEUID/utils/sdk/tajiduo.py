@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 import random
 import hashlib
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import BaseSdkClient
 from ..cache import timed_async_cache
@@ -90,7 +90,7 @@ class TajiduoClient(_TajiduoBase):
             center_uid=user.center_uid,
         )
 
-    def _default_headers(self) -> Dict[str, str]:
+    def _default_headers(self) -> dict[str, str]:
         return {
             "User-Agent": self.USER_AGENT,
             "platform": "android",
@@ -105,10 +105,10 @@ class TajiduoClient(_TajiduoBase):
         path: str,
         *,
         method: str,
-        body: Optional[Dict[str, Any]],
-        query: Optional[Dict[str, Any]],
-        headers: Dict[str, str],
-    ) -> Dict[str, str]:
+        body: dict[str, Any] | None,
+        query: dict[str, Any] | None,
+        headers: dict[str, str],
+    ) -> dict[str, str]:
         finalized = dict(headers)
         timestamp = str(int(time.time()))
         nonce = "".join(random.choice(TAJIDUO_DS_NONCE_ALPHABET) for _ in range(8))
@@ -117,7 +117,7 @@ class TajiduoClient(_TajiduoBase):
         finalized["ds"] = f"{timestamp},{nonce},{hashlib.md5(raw.encode()).hexdigest()}"
         return finalized
 
-    def _authed_headers(self) -> Dict[str, str]:
+    def _authed_headers(self) -> dict[str, str]:
         if not self.access_token:
             raise self.error_cls("尚未登录塔吉多用户中心")
         headers = self._default_headers()
@@ -259,7 +259,7 @@ class TajiduoClient(_TajiduoBase):
         )
         return _parse(GameSignState, _expect_dict(data, "游戏签到状态格式错误"), "游戏签到状态格式错误")
 
-    async def get_game_sign_rewards(self, game_id: str) -> List[GameSignReward]:
+    async def get_game_sign_rewards(self, game_id: str) -> list[GameSignReward]:
         data = await self._request(
             "/apihub/awapi/sign/rewards",
             method="GET",
@@ -268,7 +268,7 @@ class TajiduoClient(_TajiduoBase):
         )
         return _parse(GameSignReward, _expect_dict_list(data, "游戏签到奖励格式错误"), "游戏签到奖励格式错误")
 
-    async def get_sign_reward_records(self, game_id: str) -> List[SignRewardRecord]:
+    async def get_sign_reward_records(self, game_id: str) -> list[SignRewardRecord]:
         """已领取的游戏签到奖励历史（每条一件物品）。"""
         data = await self._request(
             "/apihub/awapi/sign/reward_records",
@@ -282,7 +282,7 @@ class TajiduoClient(_TajiduoBase):
             "签到记录格式错误",
         )
 
-    async def get_game_record_card(self) -> List[GameRecordCard]:
+    async def get_game_record_card(self) -> list[GameRecordCard]:
         """当前账号名下所有游戏的战绩卡（roleName / serverName / lev 等）。"""
         data = await self._request(
             "/apihub/api/getGameRecordCard",
@@ -306,7 +306,7 @@ class TajiduoClient(_TajiduoBase):
         )
         return _parse(RoleHome, _expect_dict(data, "角色面板格式错误"), "角色面板格式错误")
 
-    async def get_role_characters_data(self, role_id: str) -> List[dict]:
+    async def get_role_characters_data(self, role_id: str) -> list[dict]:
         data = await self._request(
             "/apihub/awapi/yh/characters",
             method="GET",
@@ -315,7 +315,7 @@ class TajiduoClient(_TajiduoBase):
         )
         return _expect_dict_list(data, "角色详情格式错误")
 
-    async def get_role_characters(self, role_id: str) -> List[CharacterDetail]:
+    async def get_role_characters(self, role_id: str) -> list[CharacterDetail]:
         """角色详细列表（每个角色 15+ 属性 + 城市技能 + 副手）。"""
         data = await self.get_role_characters_data(role_id)
         return _parse(
@@ -337,7 +337,7 @@ class TajiduoClient(_TajiduoBase):
             "成就进度格式错误",
         )
 
-    async def get_role_area_progress(self, role_id: str) -> List[AreaProgress]:
+    async def get_role_area_progress(self, role_id: str) -> list[AreaProgress]:
         data = await self._request(
             "/apihub/awapi/yh/areaProgress",
             method="GET",
@@ -350,7 +350,7 @@ class TajiduoClient(_TajiduoBase):
             "区域进度格式错误",
         )
 
-    async def get_role_realestate(self, role_id: str) -> List[House]:
+    async def get_role_realestate(self, role_id: str) -> list[House]:
         data = await self._request(
             "/apihub/awapi/yh/realestate",
             method="GET",
@@ -454,7 +454,7 @@ class TajiduoWebClient(_TajiduoBase):
     USER_AGENT = TAJIDUO_WEB_USER_AGENT
 
     @timed_async_cache(21600)
-    async def get_team_recommendations(self) -> List[TeamRecommendation]:
+    async def get_team_recommendations(self) -> list[TeamRecommendation]:
         """异环配队推荐列表；APP 内嵌 `webstatic.tajiduo.com/bbs/team-rec/` 页面对应此接口。
         虽然路径在 `/awapi/`，但服务端不做鉴权，匿名调用即可。
         官方推荐变动很慢，缓存 6 小时。"""
@@ -517,7 +517,7 @@ class TajiduoWebClient(_TajiduoBase):
         post_list = _expect_dict_list(posts, "帖子列表格式错误")
         raw_users = _expect_dict_list(users, "用户列表格式错误")
         authors = [_parse(_PostAuthor, u, "用户格式错误") for u in raw_users]
-        user_map: Dict[Any, _PostAuthor] = {author.uid: author for author in authors}
+        user_map: dict[Any, _PostAuthor] = {author.uid: author for author in authors}
         merged: list[NoticePost] = []
         for post in post_list:
             author = user_map.get(post.get("uid"), _EMPTY_POST_AUTHOR)

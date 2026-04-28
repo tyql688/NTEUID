@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -23,7 +22,7 @@ from ..utils.sdk.tajiduo_model import RoleHome, CharacterDetail
 REFRESH_TEX = Path(__file__).parent / "texture2d" / "refresh"
 
 
-async def _build_char_avatars(characters: list[CharacterDetail]) -> dict[str, Optional[Image.Image]]:
+async def _build_char_avatars(characters: list[CharacterDetail]) -> dict[str, Image.Image | None]:
     return {ch.id: await get_avatar_img(ch.id) for ch in characters}
 
 

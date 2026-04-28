@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from typing import List
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -198,7 +197,7 @@ PANEL_X = (WIDTH - PANEL_W) // 2
 async def draw_sign_calendar_img(
     ev: Event,
     state: GameSignState,
-    rewards: List[GameSignReward],
+    rewards: list[GameSignReward],
     role_name: str,
     uid: str,
     game_id: str,

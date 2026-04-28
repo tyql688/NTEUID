@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 import asyncio
-from typing import Dict, List
 
 from gsuid_core.logger import logger
 
@@ -12,7 +11,7 @@ from ..utils.database import NTEUser
 from ..nte_config.nte_config import NTEConfig
 
 # 同一账号 (center_uid) 串行：批量/手动撞上时后到者 fail-fast，避免 refresh_token 竞态
-_account_locks: Dict[str, asyncio.Lock] = {}
+_account_locks: dict[str, asyncio.Lock] = {}
 
 # 批量任务全局互斥：手动"全部签到" + 定时 cron 撞上时只有一个真跑，另一个跳过
 batch_lock = asyncio.Lock()
@@ -45,14 +44,14 @@ async def run_scheduled_sign() -> str | None:
         return await _run_batch(users, header)
 
 
-async def _run_batch(users: List[NTEUser], header: str) -> str:
+async def _run_batch(users: list[NTEUser], header: str) -> str:
     if not users:
         return f"{header}\n  · {SignMsg.NO_SIGN_ACCOUNT}"
     groups = _group_by_center(users)
     semaphore = asyncio.Semaphore(NTEConfig.get_config("NTESignConcurrency").data)
     delay_lo, delay_hi = NTEConfig.get_config("NTESignBatchDelay").data
 
-    async def _runner(group: List[NTEUser]) -> str:
+    async def _runner(group: list[NTEUser]) -> str:
         async with semaphore:
             await asyncio.sleep(random.uniform(delay_lo, delay_hi))
             return await _sign_locked(group)
@@ -62,7 +61,7 @@ async def _run_batch(users: List[NTEUser], header: str) -> str:
         *(_runner(g) for g in groups),
         return_exceptions=True,
     )
-    blocks: List[str] = []
+    blocks: list[str] = []
     for group, result in zip(groups, results):
         center_uid = group[0].center_uid
         if isinstance(result, str):
@@ -73,7 +72,7 @@ async def _run_batch(users: List[NTEUser], header: str) -> str:
     return "\n".join([header, *blocks])
 
 
-async def _sign_locked(users: List[NTEUser]) -> str:
+async def _sign_locked(users: list[NTEUser]) -> str:
     """账号级互斥壳：lock.locked() 快判，已在签就跳过，不排队。"""
     center_uid = users[0].center_uid
     lock = _account_locks.get(center_uid)
@@ -85,8 +84,8 @@ async def _sign_locked(users: List[NTEUser]) -> str:
         return await sign_account(users)
 
 
-def _group_by_center(users: List[NTEUser]) -> List[List[NTEUser]]:
-    groups: Dict[str, List[NTEUser]] = {}
+def _group_by_center(users: list[NTEUser]) -> list[list[NTEUser]]:
+    groups: dict[str, list[NTEUser]] = {}
     for user in users:
         groups.setdefault(user.center_uid, []).append(user)
     return list(groups.values())

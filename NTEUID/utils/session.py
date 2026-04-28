@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from types import TracebackType
-from typing import Tuple, Optional
 from datetime import datetime
 
 from gsuid_core.bot import Bot
@@ -51,7 +50,7 @@ async def ensure_tajiduo_client(user: NTEUser) -> TajiduoClient:
     return client
 
 
-async def _refresh_singleflight(user: NTEUser, client: TajiduoClient) -> Tuple[str, str]:
+async def _refresh_singleflight(user: NTEUser, client: TajiduoClient) -> tuple[str, str]:
     """同 center_uid 并发：首笔真跑 refresh + 落库，后到的协程 await 同一 future。
     异常（含 CancelledError）也会传递给所有等待者，避免 hang。"""
     inflight = _refresh_inflight.get(user.center_uid)
@@ -93,12 +92,12 @@ def is_auth_error(error: TajiduoError) -> bool:
     return isinstance(raw, dict) and raw.get("status_code") in _AUTH_STATUSES
 
 
-async def _pick_user(user_id: str, bot_id: str, game_id: str) -> Optional[NTEUser]:
+async def _pick_user(user_id: str, bot_id: str, game_id: str) -> NTEUser | None:
     targets = await NTEUser.list_sign_targets_by_user(user_id, bot_id)
     return next((u for u in targets if u.game_id == game_id), None)
 
 
-async def refresh_or_invalidate(user: NTEUser, tag: str) -> Optional[TajiduoClient]:
+async def refresh_or_invalidate(user: NTEUser, tag: str) -> TajiduoClient | None:
     """`ensure_tajiduo_client` + refresh 失败兜底：mark_invalid + 警告日志，
     返回 None 让调用方按 LOGIN_EXPIRED 提示用户。不发用户消息，交给调用方决定。"""
     try:
@@ -117,7 +116,7 @@ async def open_session(
     not_logged_in_msg: str,
     login_expired_msg: str,
     game_id: str = PRIMARY_GAME_ID,
-) -> Optional[Tuple[NTEUser, TajiduoClient]]:
+) -> tuple[NTEUser, TajiduoClient] | None:
     """选活跃账号 + refresh client。返回 `(user, client)` 或 `None`（消息已发，调用方直接 `return`）。
     refresh 抛 `TajiduoError` 一律按 LOGIN_EXPIRED 处理（mark_invalid + 重登提示）。"""
     user = await _pick_user(ev.user_id, ev.bot_id, game_id)
@@ -179,9 +178,9 @@ class SessionCall:
         self._login_expired_msg = login_expired_msg
         self._load_failed_msg = load_failed_msg
         self._game_id = game_id
-        self._user: Optional[NTEUser] = None
+        self._user: NTEUser | None = None
 
-    async def __aenter__(self) -> Optional[Tuple[NTEUser, TajiduoClient]]:
+    async def __aenter__(self) -> tuple[NTEUser, TajiduoClient] | None:
         session = await open_session(
             self._bot,
             self._ev,
@@ -197,9 +196,9 @@ class SessionCall:
 
     async def __aexit__(
         self,
-        exc_type: Optional[type[BaseException]],
-        exc: Optional[BaseException],
-        tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
     ) -> bool:
         if isinstance(exc, TajiduoError) and self._user is not None:
             await report_call_error(

@@ -1,6 +1,7 @@
+from __future__ import annotations
+
 import subprocess
 import unicodedata
-from typing import List, Tuple, Union
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -12,7 +13,7 @@ from ..utils.image import get_nte_bg, get_smooth_drawer
 from ..utils.fonts.nte_fonts import emoji_font, nte_font_origin
 
 
-def _get_git_logs() -> List[str]:
+def _get_git_logs() -> list[str]:
     try:
         process = subprocess.Popen(
             ["git", "log", "--pretty=format:%s", "-40"],
@@ -41,7 +42,7 @@ def _get_git_logs() -> List[str]:
         return []
 
 
-def _extract_leading_emojis(message: str) -> Tuple[List[str], str]:
+def _extract_leading_emojis(message: str) -> tuple[list[str], str]:
     """提取消息开头连续的 emoji，并返回剩余文本。"""
     emojis = []
     i = 0
@@ -90,7 +91,7 @@ TEXT_PATH = Path(__file__).parent / "texture2d"
 gs_font_30 = nte_font_origin(30)
 
 
-async def draw_update_log_img() -> Union[bytes, str]:
+async def draw_update_log_img() -> bytes | str:
     if not _CACHED_LOGS:
         return "获取失败"
 

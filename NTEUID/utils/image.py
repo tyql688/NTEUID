@@ -1,8 +1,9 @@
+from __future__ import annotations
+
 import re
 import html
 import random
 import hashlib
-from typing import Tuple, Union, Optional
 from pathlib import Path
 from urllib.parse import quote_plus
 
@@ -19,9 +20,9 @@ TEXT_PATH = Path(__file__).parent / "texture2d"
 CARD_LONG_PATH = TEXT_PATH / "card_long"
 FRAME_PATH = TEXT_PATH / "frame"
 
-Color = Union[Tuple[int, int, int], Tuple[int, int, int, int]]
-Box = Tuple[int, int, int, int]  # (left, top, right, bottom)
-Size = Tuple[int, int]  # (width, height)
+Color = tuple[int, int, int] | tuple[int, int, int, int]
+Box = tuple[int, int, int, int]  # (left, top, right, bottom)
+Size = tuple[int, int]  # (width, height)
 
 COLOR_WHITE = (255, 255, 255)  # 纯白
 COLOR_BG = (245, 242, 234)  # 主背景米色 / #F5F2EA
@@ -61,7 +62,7 @@ def vw(n: float) -> int:
     return round(n * VW_SCALE)
 
 
-def open_texture(path: Path, size: Optional[Size] = None) -> Image.Image:
+def open_texture(path: Path, size: Size | None = None) -> Image.Image:
     """打开本地贴图为 RGBA；提供 `size` 时按 LANCZOS 重采样。"""
     img = Image.open(path).convert("RGBA")
     if size:
@@ -78,8 +79,8 @@ def cache_name(*parts: object, ext: str = "png") -> str:
 async def download_pic_from_url(
     path: Path,
     pic_url: str,
-    size: Optional[Size] = None,
-    name: Optional[str] = None,
+    size: Size | None = None,
+    name: str | None = None,
 ) -> Image.Image:
     path.mkdir(parents=True, exist_ok=True)
 
@@ -96,7 +97,7 @@ async def download_pic_from_url(
     return img.convert("RGBA")
 
 
-async def load_qr_code(url: str, size: int = 220) -> Optional[Image.Image]:
+async def load_qr_code(url: str, size: int = 220) -> Image.Image | None:
     """用 api.qrserver.com 生成 `url` 的二维码，失败返回 None。"""
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size={size}x{size}&data={quote_plus(url)}"
     try:
@@ -134,7 +135,7 @@ def draw_card(
     *,
     radius: int = DEFAULT_CARD_RADIUS,
     fill: Color = COLOR_PANEL,
-    shadow: Optional[Color] = COLOR_SHADOW,
+    shadow: Color | None = COLOR_SHADOW,
     shadow_offset: int = 8,
 ) -> None:
     """圆角卡片 + 底部偏移阴影。`shadow=None` 关闭阴影。"""
@@ -153,7 +154,7 @@ def wrap_text(
     text: str,
     font: ImageFont.FreeTypeFont,
     max_width: int,
-    max_lines: Optional[int] = None,
+    max_lines: int | None = None,
     ellipsis: str = DEFAULT_ELLIPSIS,
 ) -> list[str]:
     """按像素宽度折行；超过 `max_lines` 截断并追加 `ellipsis`。"""
@@ -190,14 +191,14 @@ def text_block_height(
 
 def draw_text_block(
     draw: ImageDraw.ImageDraw,
-    xy: Tuple[int, int],
+    xy: tuple[int, int],
     text: str,
     font: ImageFont.FreeTypeFont,
     fill: Color,
     max_width: int,
     *,
     line_gap: int = DEFAULT_LINE_GAP,
-    max_lines: Optional[int] = None,
+    max_lines: int | None = None,
 ) -> int:
     """绘制多行自动折行文本，返回最后一行底部 y（外部继续排版用）。"""
     x, y = xy
@@ -223,7 +224,7 @@ def char_img_ring(avatar: Image.Image, size: int) -> Image.Image:
 
 
 def make_head_avatar(
-    avatar: Image.Image, size: int = 240, avatar_size: int = 200, frame_id: Optional[str] = None
+    avatar: Image.Image, size: int = 240, avatar_size: int = 200, frame_id: str | None = None
 ) -> Image.Image:
     """头像 mask 裁圆 + head_ring 内圈 + 随机 texture2d/frame/*.png 外框。
     `size` 是最终画布和外框尺寸；`avatar_size` 是头像直径，比 `size` 小越多、头像离外框越远。"""
@@ -266,12 +267,12 @@ class SmoothDrawer:
 
     def rounded_rectangle(
         self,
-        xy: Union[Tuple[int, int, int, int], Tuple[int, int]],
+        xy: tuple[int, int, int, int] | tuple[int, int],
         radius: int,
-        fill: Optional[Color] = None,
-        outline: Optional[Color] = None,
+        fill: Color | None = None,
+        outline: Color | None = None,
         width: int = 0,
-        target: Optional[Image.Image] = None,
+        target: Image.Image | None = None,
     ):
         if len(xy) == 4:
             # 边界框坐标 (x0, y0, x1, y1)
@@ -327,7 +328,7 @@ def get_nte_title_bg(width: int, height: int, *, game: str = "yihuan") -> Image.
     return ImageOps.fit(image, (width, height), method=Image.Resampling.LANCZOS, centering=(0.5, 0.0))
 
 
-def _load_card_long(card_long_id: Optional[str] = None) -> Image.Image:
+def _load_card_long(card_long_id: str | None = None) -> Image.Image:
     if card_long_id:
         path = CARD_LONG_PATH / f"{card_long_id}.png"
     else:
@@ -338,11 +339,11 @@ def _load_card_long(card_long_id: Optional[str] = None) -> Image.Image:
 def make_nte_role_title(
     qq_avatar: Image.Image,
     role_name: str,
-    uid: Union[str, int],
-    level: Optional[int] = None,
+    uid: str | int,
+    level: int | None = None,
     *,
-    frame_id: Optional[str] = None,
-    card_long_id: Optional[str] = None,
+    frame_id: str | None = None,
+    card_long_id: str | None = None,
 ) -> Image.Image:
     """通用 QQ 头像 + 角色名 + UID (+ 等级) title，返回 1100×216 RGBA。"""
     uid_layer = Image.open(TEXT_PATH / "uid_bg.png").convert("RGBA")

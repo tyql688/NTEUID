@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum, IntEnum
-from typing import Any, List, Tuple, Optional
+from typing import Any
 from dataclasses import dataclass
 
 from pydantic import Field, BaseModel, ConfigDict, ValidationError
@@ -59,7 +59,7 @@ class CharElement(str, Enum):
         }[self]
 
     @property
-    def color(self) -> Tuple[int, int, int]:
+    def color(self) -> tuple[int, int, int]:
         return {
             CharElement.PSYCHE: (180, 110, 220),
             CharElement.COSMOS: (245, 190, 80),
@@ -105,7 +105,7 @@ class _GameRolesPayload(_TajiduoModel):
     bind_role: int = Field(
         0, alias="bindRole", description="主绑定角色 id；0 表示未设主绑定，需要触发 bind_role 日任务"
     )
-    roles: List[TajiduoRoleRef] = Field(default_factory=list)
+    roles: list[TajiduoRoleRef] = Field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -126,7 +126,7 @@ class TeamRecommendation(_TajiduoModel):
     name: str
     icon: str = ""
     desc: str = ""
-    imgs: List[str] = Field(default_factory=list)
+    imgs: list[str] = Field(default_factory=list)
 
 
 class GameRecordRoleInfo(_TajiduoModel):
@@ -145,7 +145,7 @@ class GameRecordCard(_TajiduoModel):
     game_name: str = Field("", alias="gameName")
     game_icon: str = Field("", alias="gameIcon")
     background_image: str = Field("", alias="backgroundImage")
-    bind_role_info: Optional[GameRecordRoleInfo] = Field(None, alias="bindRoleInfo")
+    bind_role_info: GameRecordRoleInfo | None = Field(None, alias="bindRoleInfo")
     link: str = ""
 
 
@@ -189,7 +189,7 @@ class RoleHomeCharacter(_TajiduoModel):
     slev: int = Field(0, description="混频等级")
     likeability_lev: int = Field(0, alias="likeabilitylev", description="好感度等级")
     awaken_lev: int = Field(0, alias="awakenLev", description="觉醒等级")
-    awaken_effect: List[str] = Field(
+    awaken_effect: list[str] = Field(
         default_factory=list, alias="awakenEffect", description="已激活的觉醒效果列表（Effect1…Effect6）"
     )
     element_type: CharElement = Field(alias="elementType")
@@ -217,11 +217,11 @@ class RoleHome(_TajiduoModel):
     )
     day_value: int = Field(0, alias="dayvalue", description="今日活跃度（0–100）")
     week_copies_remain_cnt: int = Field(0, alias="weekcopiesremainCnt", description="周本剩余次数（封顶 3）")
-    achieve_progress: Optional[RoleHomeAchieveProgress] = Field(None, alias="achieveProgress")
-    area_progress: List[RoleHomeAreaProgress] = Field(default_factory=list, alias="areaProgress")
-    realestate: Optional[RoleHomeRealEstate] = None
-    vehicle: Optional[RoleHomeVehicle] = None
-    characters: List[RoleHomeCharacter] = Field(default_factory=list)
+    achieve_progress: RoleHomeAchieveProgress | None = Field(None, alias="achieveProgress")
+    area_progress: list[RoleHomeAreaProgress] = Field(default_factory=list, alias="areaProgress")
+    realestate: RoleHomeRealEstate | None = None
+    vehicle: RoleHomeVehicle | None = None
+    characters: list[RoleHomeCharacter] = Field(default_factory=list)
 
 
 class CharacterProperty(_TajiduoModel):
@@ -244,7 +244,7 @@ class CharacterSkill(_TajiduoModel):
     name: str = ""
     type: str = ""
     level: int = 0
-    items: List[CharacterSkillItem] = Field(default_factory=list)
+    items: list[CharacterSkillItem] = Field(default_factory=list)
 
 
 class CharacterFork(_TajiduoModel):
@@ -256,21 +256,21 @@ class CharacterFork(_TajiduoModel):
     alev: str = "0"
     blev: str = "0"
     slev: str = "0"
-    quality: Optional[CharQuality] = None
-    group_type: Optional[CharGroup] = Field(None, alias="groupType")
+    quality: CharQuality | None = None
+    group_type: CharGroup | None = Field(None, alias="groupType")
     des: str = ""
     buff_name: str = Field("", alias="buffName")
     buff_des: str = Field("", alias="buffDes")
-    lbd: List[str] = Field(default_factory=list)
-    properties: List[CharacterProperty] = Field(default_factory=list)
+    lbd: list[str] = Field(default_factory=list)
+    properties: list[CharacterProperty] = Field(default_factory=list)
 
 
 class CharacterSuitItem(_TajiduoModel):
     id: str = ""
     name: str = ""
     lev: int = 0
-    main_properties: List[CharacterProperty] = Field(default_factory=list, alias="mainProperties")
-    properties: List[CharacterProperty] = Field(default_factory=list)
+    main_properties: list[CharacterProperty] = Field(default_factory=list, alias="mainProperties")
+    properties: list[CharacterProperty] = Field(default_factory=list)
 
 
 class CharacterSuit(_TajiduoModel):
@@ -278,9 +278,9 @@ class CharacterSuit(_TajiduoModel):
     name: str = ""
     des2: str = ""
     des4: str = ""
-    suit_condition: List[str] = Field(default_factory=list, alias="suitCondition")
-    core: List[CharacterSuitItem] = Field(default_factory=list)
-    pie: List[CharacterSuitItem] = Field(default_factory=list)
+    suit_condition: list[str] = Field(default_factory=list, alias="suitCondition")
+    core: list[CharacterSuitItem] = Field(default_factory=list)
+    pie: list[CharacterSuitItem] = Field(default_factory=list)
     suit_activate_num: int = Field(0, alias="suitActivateNum")
 
 
@@ -291,13 +291,13 @@ class CharacterDetail(_TajiduoModel):
     slev: int = Field(0, description="混频等级")
     likeability_lev: int = Field(0, alias="likeabilitylev", description="好感度等级")
     awaken_lev: int = Field(0, alias="awakenLev", description="觉醒等级")
-    awaken_effect: List[str] = Field(default_factory=list, alias="awakenEffect", description="已激活的觉醒效果列表")
+    awaken_effect: list[str] = Field(default_factory=list, alias="awakenEffect", description="已激活的觉醒效果列表")
     element_type: CharElement = Field(alias="elementType")
     group_type: CharGroup = Field(alias="groupType")
     quality: CharQuality
-    properties: List[CharacterProperty] = Field(default_factory=list, description="角色属性面板项")
-    skills: List[CharacterSkill] = Field(default_factory=list, description="战技列表")
-    city_skills: List[CharacterSkill] = Field(default_factory=list, alias="citySkills", description="城区技能列表")
+    properties: list[CharacterProperty] = Field(default_factory=list, description="角色属性面板项")
+    skills: list[CharacterSkill] = Field(default_factory=list, description="战技列表")
+    city_skills: list[CharacterSkill] = Field(default_factory=list, alias="citySkills", description="城区技能列表")
     fork: CharacterFork = Field(default_factory=lambda: CharacterFork(groupType=None, buffName="", buffDes=""))
     suit: CharacterSuit = Field(default_factory=lambda: CharacterSuit(suitActivateNum=0))
 
@@ -315,7 +315,7 @@ class AchievementProgress(_TajiduoModel):
     bronze_umd_cnt: int = Field(0, alias="bronzeUmdCnt", description="铜牌奖牌数")
     silver_umd_cnt: int = Field(0, alias="silverUmdCnt", description="银牌奖牌数")
     gold_umd_cnt: int = Field(0, alias="goldUmdCnt", description="金牌奖牌数")
-    detail: List[AchievementCategory] = Field(default_factory=list)
+    detail: list[AchievementCategory] = Field(default_factory=list)
 
 
 class AreaDetailItem(_TajiduoModel):
@@ -323,7 +323,7 @@ class AreaDetailItem(_TajiduoModel):
     name: str
     total: int = 0
     # 未开启/未解锁的子项服务端会给 null
-    progress: Optional[int] = None
+    progress: int | None = None
 
 
 class AreaProgress(_TajiduoModel):
@@ -331,7 +331,7 @@ class AreaProgress(_TajiduoModel):
     name: str
     progress: int = 0
     total: int = 0
-    detail: List[AreaDetailItem] = Field(default_factory=list)
+    detail: list[AreaDetailItem] = Field(default_factory=list)
 
 
 class Furniture(_TajiduoModel):
@@ -346,7 +346,7 @@ class House(_TajiduoModel):
     own: bool = False
     # 居住角色 id 列表的 JSON 字符串，如 "[1019]"；缺省房源没有
     chars: str = ""
-    fdetail: List[Furniture] = Field(default_factory=list)
+    fdetail: list[Furniture] = Field(default_factory=list)
 
 
 class VehicleBaseStat(_TajiduoModel):
@@ -370,13 +370,13 @@ class Vehicle(_TajiduoModel):
     id: str
     name: str
     own: bool = False
-    base: List[VehicleBaseStat] = Field(default_factory=list)
-    advanced: List[VehicleAdvancedStat] = Field(default_factory=list)
-    models: List[VehicleModel] = Field(default_factory=list)
+    base: list[VehicleBaseStat] = Field(default_factory=list)
+    advanced: list[VehicleAdvancedStat] = Field(default_factory=list)
+    models: list[VehicleModel] = Field(default_factory=list)
 
 
 class VehicleList(_TajiduoModel):
-    detail: List[Vehicle] = Field(default_factory=list)
+    detail: list[Vehicle] = Field(default_factory=list)
     own_cnt: int = Field(0, alias="ownCnt")
     show_id: str = Field("", alias="showId")
     show_name: str = Field("", alias="showName")
@@ -420,8 +420,8 @@ class NoticePost(_TajiduoModel):
     author_avatar: str = Field("", alias="authorAvatar")
     structured_content: str = Field("", alias="structuredContent")
     content: str = ""
-    images: List[NoticeImageRef] = Field(default_factory=list)
-    vods: List[NoticeVodRef] = Field(default_factory=list)
+    images: list[NoticeImageRef] = Field(default_factory=list)
+    vods: list[NoticeVodRef] = Field(default_factory=list)
 
 
 class _PostAuthor(_TajiduoModel):
@@ -436,7 +436,7 @@ _EMPTY_POST_AUTHOR = _PostAuthor()
 class RecommendPostList(_TajiduoModel):
     has_more: bool = Field(False, alias="hasMore")
     page: int = 0
-    posts: List[NoticePost] = Field(default_factory=list)
+    posts: list[NoticePost] = Field(default_factory=list)
 
 
 class UserCoinTaskState(_TajiduoModel):
@@ -468,8 +468,8 @@ class UserTask(_TajiduoModel):
 
 
 class UserTasks(_TajiduoModel):
-    daily: List[UserTask] = Field(default_factory=list, alias="task_list1")
-    achievement: List[UserTask] = Field(default_factory=list, alias="task_list2")
+    daily: list[UserTask] = Field(default_factory=list, alias="task_list1")
+    achievement: list[UserTask] = Field(default_factory=list, alias="task_list2")
 
     def find_daily(self, task_key: str) -> UserTask | None:
         for task in self.daily:

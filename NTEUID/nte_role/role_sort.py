@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from ..utils.sdk.tajiduo_model import CharacterDetail
 
 
@@ -19,7 +17,7 @@ def diff_characters(
 def sort_characters(
     characters: list[CharacterDetail],
     *,
-    changed_ids: Optional[set[str]] = None,
+    changed_ids: set[str] | None = None,
 ) -> list[CharacterDetail]:
     """品级 → alev → 觉醒 → id 倒排；`changed_ids` 给了就在最前面再加一档『已更新优先』。"""
 

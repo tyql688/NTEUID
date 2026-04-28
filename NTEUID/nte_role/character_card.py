@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import re
-from typing import List, Tuple
 from pathlib import Path
 
 from PIL import Image, ImageDraw
@@ -240,7 +239,7 @@ _RICH_TAG_CLOSE_RE = re.compile(r"</[A-Za-z]*>")
 _LBD_RE = re.compile(r"\{(\d+)\}")
 
 
-def _substitute_lbd(text: str, lbd: List[str]) -> str:
+def _substitute_lbd(text: str, lbd: list[str]) -> str:
     """`<lv>{N}</>` 把 `{N}` 换成 `lbd[N]`；越界保留原文。lbd 为空时直接返回原文。"""
     if not text or not lbd:
         return text
@@ -267,11 +266,11 @@ _TAG_COLORS = {
 }
 
 
-def _parse_rich_segments(text: str, default_color: Tuple[int, int, int]) -> List[Tuple[str, Tuple[int, int, int]]]:
+def _parse_rich_segments(text: str, default_color: tuple[int, int, int]) -> list[tuple[str, tuple[int, int, int]]]:
     """解析 `<Tag>...</>` 嵌套标签为 (片段, 颜色) 列表；未识别的 tag 用 default_color；保留换行。"""
     text = _RICH_BREAK_RE2.sub("\n", text).replace("\\n", "\n")
-    segments: List[Tuple[str, Tuple[int, int, int]]] = []
-    color_stack: List[Tuple[int, int, int]] = [default_color]
+    segments: list[tuple[str, tuple[int, int, int]]] = []
+    color_stack: list[tuple[int, int, int]] = [default_color]
     i = 0
     buf = ""
     while i < len(text):
@@ -301,13 +300,13 @@ def _parse_rich_segments(text: str, default_color: Tuple[int, int, int]) -> List
 
 def _layout_colored(
     draw: ImageDraw.ImageDraw,
-    segments: List[Tuple[str, Tuple[int, int, int]]],
+    segments: list[tuple[str, tuple[int, int, int]]],
     font,
     max_w: int,
     max_lines: int | None = None,
-) -> List[List[Tuple[str, Tuple[int, int, int]]]]:
+) -> list[list[tuple[str, tuple[int, int, int]]]]:
     """把 (text, color) 段按字符宽度折行：每行是 (chunk, color) 列表。"""
-    lines: List[List[Tuple[str, Tuple[int, int, int]]]] = [[]]
+    lines: list[list[tuple[str, tuple[int, int, int]]]] = [[]]
     cur_w = 0
     for text, color in segments:
         for char in text:
@@ -336,8 +335,8 @@ def _layout_colored(
 
 def _draw_colored_lines(
     draw: ImageDraw.ImageDraw,
-    xy: Tuple[int, int],
-    lines: List[List[Tuple[str, Tuple[int, int, int]]]],
+    xy: tuple[int, int],
+    lines: list[list[tuple[str, tuple[int, int, int]]]],
     font,
     line_gap: int,
 ) -> int:
@@ -423,7 +422,7 @@ def _truncate(draw: ImageDraw.ImageDraw, text: str, font, max_w: int) -> str:
     return s + suffix
 
 
-def _filter_props(props: List[CharacterProperty]) -> List[CharacterProperty]:
+def _filter_props(props: list[CharacterProperty]) -> list[CharacterProperty]:
     return [p for p in props if p.name and p.value not in _ZERO]
 
 
@@ -432,7 +431,7 @@ def _section_header_h() -> int:
 
 
 def _draw_section_header(
-    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: Tuple[int, int], icon: Image.Image, title_zh: str
+    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: tuple[int, int], icon: Image.Image, title_zh: str
 ) -> int:
     """官方 PN/y5/P5/k5 段头：图标 w-vw-18 + 中文 + "CHARACTER ATTRIBUTE" 副标。"""
     x, y = xy
@@ -450,7 +449,7 @@ def _draw_section_header(
 
 
 def _draw_inner_header(
-    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: Tuple[int, int], icon: Image.Image, title: str
+    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: tuple[int, int], icon: Image.Image, title: str
 ) -> int:
     x, y = xy
     canvas.alpha_composite(icon, (x, y))
@@ -486,7 +485,7 @@ def _quality_letter(quality_value: str) -> Image.Image | None:
 
 
 async def _draw_portrait(
-    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: Tuple[int, int], width: int, character: CharacterDetail
+    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: tuple[int, int], width: int, character: CharacterDetail
 ) -> int:
     """nC：黑底 rounded-vw-12，NTE 水印 + 半身像 + 顶部左/右浮层 + 底部黑带觉醒。"""
     x, y = xy
@@ -622,7 +621,7 @@ async def _draw_portrait(
     return panel_h
 
 
-def _props_panel_h(props: List[CharacterProperty]) -> int:
+def _props_panel_h(props: list[CharacterProperty]) -> int:
     if not props:
         return 0
     rows_per_col = 3
@@ -631,7 +630,7 @@ def _props_panel_h(props: List[CharacterProperty]) -> int:
 
 
 async def _draw_props(
-    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: Tuple[int, int], width: int, properties: List[CharacterProperty]
+    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: tuple[int, int], width: int, properties: list[CharacterProperty]
 ) -> int:
     visible = _filter_props(properties)[:6]  # 官方 slice(0,6)
     head_h = _draw_section_header(canvas, draw, xy, SECTION_PROPS_ICON, "角色属性")
@@ -693,7 +692,7 @@ def _battle_skill_cell_h() -> int:
 async def _draw_battle_skill_cell(
     canvas: Image.Image,
     draw: ImageDraw.ImageDraw,
-    xy: Tuple[int, int],
+    xy: tuple[int, int],
     skill: CharacterSkill,
     label: str,
     cell_w: int,
@@ -733,9 +732,9 @@ async def _draw_battle_skill_cell(
 async def _draw_battle_skills_panel(
     canvas: Image.Image,
     draw: ImageDraw.ImageDraw,
-    xy: Tuple[int, int],
+    xy: tuple[int, int],
     width: int,
-    skills: List[CharacterSkill],
+    skills: list[CharacterSkill],
 ) -> int:
     """g5：bg-#DCDCDC rounded px-vw-7 py-vw-10 内嵌 战斗技能 头 + 单元格 flex-wrap。"""
     x, y = xy
@@ -743,7 +742,7 @@ async def _draw_battle_skills_panel(
     cell_h = _battle_skill_cell_h()
     # 排版：active 用 SKILL_CELL_LARGE_W 列宽，passive 用 SKILL_CELL_SMALL_W 列宽
     used_w = SKILL_PANEL_PAD_X
-    rows: List[List[Tuple[CharacterSkill, str, int, int, int]]] = [[]]
+    rows: list[list[tuple[CharacterSkill, str, int, int, int]]] = [[]]
     for idx, skill in enumerate(skills):
         is_passive = skill.type == "Passive"
         cell_w = SKILL_CELL_SMALL_W if is_passive else SKILL_CELL_LARGE_W
@@ -780,9 +779,9 @@ async def _draw_battle_skills_panel(
 async def _draw_city_skills_panel(
     canvas: Image.Image,
     draw: ImageDraw.ImageDraw,
-    xy: Tuple[int, int],
+    xy: tuple[int, int],
     width: int,
-    skills: List[CharacterSkill],
+    skills: list[CharacterSkill],
 ) -> int:
     """u5：bg-#DCDCDC rounded px-vw-7 py-vw-10 + 生活技能 头 + cells flex-row gap-x-vw-13。"""
     x, y = xy
@@ -832,7 +831,7 @@ async def _draw_city_skills_panel(
 async def _draw_skills(
     canvas: Image.Image,
     draw: ImageDraw.ImageDraw,
-    xy: Tuple[int, int],
+    xy: tuple[int, int],
     width: int,
     character: CharacterDetail,
 ) -> int:
@@ -890,7 +889,7 @@ def _fork_panel_h(draw: ImageDraw.ImageDraw, fork: CharacterFork, width: int) ->
 async def _draw_fork_chip(
     canvas: Image.Image,
     draw: ImageDraw.ImageDraw,
-    xy: Tuple[int, int],
+    xy: tuple[int, int],
     prop: CharacterProperty,
 ) -> int:
     """K5：bg-#CCCCCC rounded， icon + name + +value。"""
@@ -917,7 +916,7 @@ async def _draw_fork_chip(
 
 
 async def _draw_fork(
-    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: Tuple[int, int], width: int, fork: CharacterFork
+    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: tuple[int, int], width: int, fork: CharacterFork
 ) -> int:
     if not fork.id:
         return 0
@@ -1033,7 +1032,7 @@ async def _draw_fork(
 
 
 async def _draw_drive_card(
-    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: Tuple[int, int], width: int, item: CharacterSuitItem
+    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: tuple[int, int], width: int, item: CharacterSuitItem
 ) -> int:
     """H5：bg-#DCDCDC rounded， 顶部 icon+name+lev pill + 底部 #E9E9E9 panel(基础属性 + 附加属性)。"""
     x, y = xy
@@ -1110,7 +1109,7 @@ async def _draw_drive_card(
 async def _draw_drive_prop_row(
     canvas: Image.Image,
     draw: ImageDraw.ImageDraw,
-    xy: Tuple[int, int],
+    xy: tuple[int, int],
     width: int,
     prop: CharacterProperty,
     alt: bool,
@@ -1172,7 +1171,7 @@ def _drive_card_h(item: CharacterSuitItem) -> int:
 
 
 async def _draw_suit(
-    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: Tuple[int, int], width: int, suit: CharacterSuit
+    canvas: Image.Image, draw: ImageDraw.ImageDraw, xy: tuple[int, int], width: int, suit: CharacterSuit
 ) -> int:
     if not suit.id:
         return 0
@@ -1192,7 +1191,7 @@ async def _draw_suit(
     # condition list = [suit.id, "add", *suitCondition]
     items = [suit.id, "add", *suit.suit_condition] if suit.suit_condition else [suit.id]
     cond_total_w = 0
-    cond_imgs: List[Image.Image | None] = []
+    cond_imgs: list[Image.Image | None] = []
     for it in items:
         if it == "add":
             cond_imgs.append(SUIT_COND_ADD)
@@ -1222,7 +1221,7 @@ async def _draw_suit(
     card_w = (width - DRIVE_GRID_GAP_X) // 2
     for row_idx in range((len(drives) + 1) // 2):
         row_items = drives[row_idx * 2 : row_idx * 2 + 2]
-        row_heights: List[int] = []
+        row_heights: list[int] = []
         for col_idx, item in enumerate(row_items):
             cx_card = xy[0] + col_idx * (card_w + DRIVE_GRID_GAP_X)
             h = await _draw_drive_card(canvas, draw, (cx_card, cursor), card_w, item)
@@ -1234,8 +1233,8 @@ async def _draw_suit(
     return cursor - xy[1]
 
 
-def _measure(draw: ImageDraw.ImageDraw, character: CharacterDetail, inner_w: int) -> List[Tuple[str, int]]:
-    sections: List[Tuple[str, int]] = [("portrait", PORTRAIT_IMG_H)]
+def _measure(draw: ImageDraw.ImageDraw, character: CharacterDetail, inner_w: int) -> list[tuple[str, int]]:
+    sections: list[tuple[str, int]] = [("portrait", PORTRAIT_IMG_H)]
     visible_props = _filter_props(character.properties)
     if visible_props:
         sections.append(("props", _section_header_h() + SEC_BODY_GAP + _props_panel_h(visible_props[:6])))

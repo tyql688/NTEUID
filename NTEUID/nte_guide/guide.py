@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any, List
+from typing import Any
 from pathlib import Path
 
 from gsuid_core.bot import Bot
@@ -26,7 +26,7 @@ async def get_guide(bot: Bot, ev: Event, char_name: str) -> None:
     authors = [p.name for p in GUIDE_PATH.iterdir() if p.is_dir()] if "all" in config else config
 
     pattern = re.compile(re.escape(real_name), re.IGNORECASE)
-    imgs: List[Any] = []
+    imgs: list[Any] = []
     for author in authors:
         imgs += await _collect(GUIDE_PATH / author, pattern, author)
 
@@ -37,11 +37,11 @@ async def get_guide(bot: Bot, ev: Event, char_name: str) -> None:
     await bot.send(imgs[1] if "all" not in config and len(imgs) == 2 else imgs)
 
 
-async def _collect(guide_dir: Path, pattern: re.Pattern, author: str) -> List[Any]:
+async def _collect(guide_dir: Path, pattern: re.Pattern, author: str) -> list[Any]:
     if not guide_dir.is_dir():
         logger.warning(f"[NTE攻略] 攻略目录不存在：{guide_dir}")
         return []
-    imgs: List[Any] = []
+    imgs: list[Any] = []
     for file in guide_dir.iterdir():
         if not pattern.search(file.name):
             continue
