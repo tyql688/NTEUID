@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import random
 import asyncio
+from enum import Enum
+from dataclasses import field, dataclass
 
 from gsuid_core.logger import logger
 
@@ -31,99 +33,195 @@ from ..utils.sdk.tajiduo_model import (
 )
 
 STATUS_OK = "✅"
-STATUS_SKIP = "🚫"
+STATUS_SKIP = "⏭️"
 STATUS_FAIL = "❌"
 
-_TASK_LABELS = {
+TASK_LABELS = {
     TASK_KEY_BROWSE_POST: "浏览帖子",
     TASK_KEY_LIKE_POST: "点赞帖子",
     TASK_KEY_SHARE: "分享帖子",
 }
 
 
-async def sign_account(users: list[NTEUser]) -> str:
+@dataclass(frozen=True)
+class StepResult:
+    """单步签到结果：`line` 是手动签到展示的文本，`status` 用于批量统计聚合。"""
+
+    line: str
+    status: str  # STATUS_OK / STATUS_SKIP / STATUS_FAIL
+
+
+class AccountStatus(Enum):
+    """账号级签到状态。批量汇总按这个分桶，不从子字段反推。"""
+
+    ALL_DONE = "all_done"  # 入口短路：今日该签的全签了，没动 refresh
+    SUCCESS = "success"  # 跑完所有子步骤，无 FAIL
+    PARTIAL_FAILED = "partial"  # 跑完，但有 step FAIL 或社区任务整体抓取失败
+    AUTH_FAILED = "auth_failed"  # refresh 失败，本次没签
+    BUSY = "busy"  # 账号锁被占（手动/批量互撞）
+
+
+@dataclass(frozen=True)
+class SignAccountResult:
+    """`sign_account` 的结构化结果。`text` 给手动签到拼接，其余字段给批量汇总。"""
+
+    center_uid: str
+    text: str
+    status: AccountStatus
+    app: StepResult | None = None
+    games: dict[str, list[StepResult]] = field(default_factory=dict)
+    tasks: dict[str, StepResult] = field(default_factory=dict)
+    tasks_global_failed: bool = False
+
+
+async def sign_account(users: list[NTEUser]) -> SignAccountResult:
     """单账号完整签到：refresh → App 签 → 角色游戏签 → 社区任务。
     假设调用方已持有该 center_uid 的账号级锁，内部不再加锁。
     """
     primary = users[0]
     header = f"[账号 {primary.center_uid}]"
 
+    if await _is_account_all_done(users):
+        return SignAccountResult(
+            center_uid=primary.center_uid,
+            text=f"{header}\n  · 今日已签",
+            status=AccountStatus.ALL_DONE,
+        )
+
     client = await refresh_or_invalidate(primary, "签到")
     if client is None:
-        return f"{header}\n  · {SignMsg.login_expired()}"
+        return SignAccountResult(
+            center_uid=primary.center_uid,
+            text=f"{header}\n  · {SignMsg.login_expired()}",
+            status=AccountStatus.AUTH_FAILED,
+        )
 
-    lines: list[str] = [header, f"  · {await _app_sign(client, primary.center_uid)}"]
+    app_result = await _app_sign(client, primary.center_uid)
+    lines: list[str] = [header, f"  · {app_result.line}"]
+
+    games: dict[str, list[StepResult]] = {}
     disabled = disabled_sign_games()
     for user in users:
         if user.game_id in disabled:
             continue
-        lines.append(f"  · {await _game_sign(client, user)}")
+        gres = await _game_sign(client, user)
+        lines.append(f"  · {gres.line}")
+        games.setdefault(user.game_id, []).append(gres)
 
+    tasks: dict[str, StepResult] = {}
+    tasks_global_failed = False
     if NTEConfig.get_config("NTETaskDaily").data:
-        lines.extend(f"  · {line}" for line in await _daily_tasks(client, primary.center_uid))
-    return "\n".join(lines)
+        daily, tasks_global_failed = await _daily_tasks(client, primary.center_uid)
+        for task_key, tres in daily:
+            lines.append(f"  · {tres.line}")
+            tasks[task_key] = tres
+        if tasks_global_failed:
+            lines.append(f"  · {_fmt('社区任务', STATUS_FAIL, '稍后再试')}")
+
+    has_fail = (
+        app_result.status == STATUS_FAIL
+        or any(s.status == STATUS_FAIL for steps in games.values() for s in steps)
+        or any(s.status == STATUS_FAIL for s in tasks.values())
+        or tasks_global_failed
+    )
+    status = AccountStatus.PARTIAL_FAILED if has_fail else AccountStatus.SUCCESS
+
+    return SignAccountResult(
+        center_uid=primary.center_uid,
+        text="\n".join(lines),
+        status=status,
+        app=app_result,
+        games=games,
+        tasks=tasks,
+        tasks_global_failed=tasks_global_failed,
+    )
 
 
-async def _app_sign(client: TajiduoClient, center_uid: str) -> str:
+async def _is_account_all_done(users: list[NTEUser]) -> bool:
+    """所有该签的子任务今日都已落库 → sign_account 可短路、不必 refresh。
+    判定与 sign_account 内部一一对齐：App 必签、未 disabled 的 game 角色每个都签、
+    NTETaskDaily=True 时 NTETaskKinds 选中的子任务每个都完成。
+    """
+    primary = users[0]
+    if not await NTESignRecord.is_signed(primary.center_uid, SIGN_KIND_APP):
+        return False
+    disabled = disabled_sign_games()
+    for user in users:
+        if user.game_id in disabled:
+            continue
+        if not await NTESignRecord.is_signed(f"{user.game_id}:{user.uid}", SIGN_KIND_GAME):
+            return False
+    if NTEConfig.get_config("NTETaskDaily").data:
+        enabled = set(NTEConfig.get_config("NTETaskKinds").data)
+        for key in TASK_LABELS:
+            if key not in enabled:
+                continue
+            if not await NTESignRecord.is_signed(primary.center_uid, SIGN_KIND_TASK_PREFIX + key):
+                return False
+    return True
+
+
+async def _app_sign(client: TajiduoClient, center_uid: str) -> StepResult:
     label = "塔吉多签到"
     if await NTESignRecord.is_signed(center_uid, SIGN_KIND_APP):
-        return _fmt(label, STATUS_SKIP, "今日已签")
+        return StepResult(_fmt(label, STATUS_SKIP, "今日已签"), STATUS_SKIP)
 
     try:
         if await client.get_community_sign_state(TAJIDUO_SIGNIN_COMMUNITY_ID):
             await NTESignRecord.record(
                 center_uid, SIGN_KIND_APP, payload={"path": "state_hit", "community_id": TAJIDUO_SIGNIN_COMMUNITY_ID}
             )
-            return _fmt(label, STATUS_SKIP, "今日已签")
+            return StepResult(_fmt(label, STATUS_SKIP, "今日已签"), STATUS_SKIP)
         result = await client.app_signin(TAJIDUO_SIGNIN_COMMUNITY_ID)
     except TajiduoError as error:
         if _is_already_signed(error):
             await NTESignRecord.record(center_uid, SIGN_KIND_APP, payload=error.raw)
-            return _fmt(label, STATUS_SKIP, "今日已签")
+            return StepResult(_fmt(label, STATUS_SKIP, "今日已签"), STATUS_SKIP)
         logger.warning(f"[NTE签到] 账号 {center_uid} 塔吉多签到失败: {error.message}")
-        return _fmt(label, STATUS_FAIL, SignMsg.FAILED)
+        return StepResult(_fmt(label, STATUS_FAIL, SignMsg.FAILED), STATUS_FAIL)
 
     await NTESignRecord.record(center_uid, SIGN_KIND_APP, payload=result.model_dump(by_alias=True))
-    return _fmt(label, STATUS_OK, _format_app_rewards(result))
+    return StepResult(_fmt(label, STATUS_OK, _format_app_rewards(result)), STATUS_OK)
 
 
-async def _game_sign(client: TajiduoClient, user: NTEUser) -> str:
+async def _game_sign(client: TajiduoClient, user: NTEUser) -> StepResult:
     """`/apihub/awapi/signin/state` 是账号级（不带 role_id），今日状态不能用来
     跳过单个角色的签到——只走本地 record 幂等 + POST 响应判定。
     """
     label = f"{user.role_name} {GAME_LABELS.get(user.game_id, '')}游戏签到"
     record_ref = f"{user.game_id}:{user.uid}"
     if await NTESignRecord.is_signed(record_ref, SIGN_KIND_GAME):
-        return _fmt(label, STATUS_SKIP, "今日已签")
+        return StepResult(_fmt(label, STATUS_SKIP, "今日已签"), STATUS_SKIP)
 
     try:
         data = await client.game_signin(user.uid, user.game_id)
     except TajiduoError as error:
         if _is_already_signed(error):
             await NTESignRecord.record(record_ref, SIGN_KIND_GAME, payload=error.raw)
-            return _fmt(label, STATUS_SKIP, "今日已签")
+            return StepResult(_fmt(label, STATUS_SKIP, "今日已签"), STATUS_SKIP)
         logger.warning(f"[NTE签到] 角色 {user.uid} 游戏签到失败: {error.message}")
-        return _fmt(label, STATUS_FAIL, SignMsg.FAILED)
+        return StepResult(_fmt(label, STATUS_FAIL, SignMsg.FAILED), STATUS_FAIL)
 
     await NTESignRecord.record(record_ref, SIGN_KIND_GAME, payload=data)
-    return _fmt(label, STATUS_OK)
+    return StepResult(_fmt(label, STATUS_OK), STATUS_OK)
 
 
-async def _daily_tasks(client: TajiduoClient, center_uid: str) -> list[str]:
+async def _daily_tasks(client: TajiduoClient, center_uid: str) -> tuple[list[tuple[str, StepResult]], bool]:
+    """返回 `(per-task results, 整体抓取失败标志)`。整体失败时第二项为 True，第一项为空。"""
     try:
-        return await _run_daily_tasks(client, center_uid)
+        return await _run_daily_tasks(client, center_uid), False
     except TajiduoError as error:
         logger.warning(f"[NTE签到] 账号 {center_uid} 社区任务失败: {error.message}")
-        return [_fmt("社区任务", STATUS_FAIL, "稍后再试")]
+        return [], True
 
 
-async def _run_daily_tasks(client: TajiduoClient, center_uid: str) -> list[str]:
+async def _run_daily_tasks(client: TajiduoClient, center_uid: str) -> list[tuple[str, StepResult]]:
     """先按本地 NTESignRecord 幂等短路；只有存在未完成子任务时才拉远程 task 列表。
     `like_post` 返回 True 只代表动作成功，不必然等于服务端任务计数 +1；本地落库
     后同日不再重新跑，避免"远程计数滞后→UI 显示 ✅ 但其实没入账"的错觉。
     """
     enabled = set(NTEConfig.get_config("NTETaskKinds").data)
-    enabled_keys = [key for key in _TASK_LABELS if key in enabled]
+    enabled_keys = [key for key in TASK_LABELS if key in enabled]
     if not enabled_keys:
         return []
 
@@ -142,16 +240,16 @@ async def _run_daily_tasks(client: TajiduoClient, center_uid: str) -> list[str]:
     needed = sum(t.remaining for t in tasks_by_key.values() if not t.finished)
 
     post_ids: list[str] | None = None
-    lines: list[str] = []
+    results: list[tuple[str, StepResult]] = []
     for key in enabled_keys:
-        label = _TASK_LABELS[key]
+        label = TASK_LABELS[key]
         if local_done[key]:
-            lines.append(_fmt(label, STATUS_SKIP, "今日已完成"))
+            results.append((key, StepResult(_fmt(label, STATUS_SKIP, "今日已完成"), STATUS_SKIP)))
             continue
 
         task = tasks_by_key.get(key)
         if task is None:
-            lines.append(_fmt(label, STATUS_FAIL, "任务未开放"))
+            results.append((key, StepResult(_fmt(label, STATUS_FAIL, "任务未开放"), STATUS_FAIL)))
             continue
 
         if task.finished:
@@ -164,13 +262,14 @@ async def _run_daily_tasks(client: TajiduoClient, center_uid: str) -> list[str]:
                     "limit_times": task.limit_times,
                 },
             )
-            lines.append(_fmt(label, STATUS_SKIP, f"今日已完成 {task.complete_times}/{task.limit_times}"))
+            line = _fmt(label, STATUS_SKIP, f"今日已完成 {task.complete_times}/{task.limit_times}")
+            results.append((key, StepResult(line, STATUS_SKIP)))
             continue
 
         if post_ids is None:
             post_ids = await _collect_post_ids(client, needed=needed)
         if not post_ids:
-            lines.append(_fmt(label, STATUS_FAIL, "暂无可处理帖子"))
+            results.append((key, StepResult(_fmt(label, STATUS_FAIL, "暂无可处理帖子"), STATUS_FAIL)))
             continue
 
         # 每个任务一份独立乱序的帖子列表，避免同一 post 在短时间被 view/like/share 依次命中
@@ -193,8 +292,8 @@ async def _run_daily_tasks(client: TajiduoClient, center_uid: str) -> list[str]:
                 },
             )
 
-        lines.append(_fmt(label, status, detail))
-    return lines
+        results.append((key, StepResult(_fmt(label, status, detail), status)))
+    return results
 
 
 async def _advance_task(
