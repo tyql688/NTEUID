@@ -6,7 +6,7 @@ from gsuid_core.utils.plugins_config.models import (
     GsStrConfig,
     GsBoolConfig,
     GsListConfig,
-    GsTimeRConfig,
+    GsTimeConfig,
     GsListStrConfig,
 )
 
@@ -15,6 +15,21 @@ from ..utils.constants import (
     TASK_KEY_LIKE_POST,
     TASK_KEY_BROWSE_POST,
 )
+
+try:
+    from gsuid_core.utils.plugins_config.models import GsTimeRConfig
+
+    _sign_time_config: GSC = GsTimeRConfig(
+        "定时签到时间",
+        "每天自动签到时间（时, 分），重启后生效",
+        (0, 30),
+    )
+except ImportError:
+    _sign_time_config = GsTimeConfig(
+        "定时签到时间",
+        "每天自动签到时间（HH:MM），重启后生效",
+        "00:30",
+    )
 
 CONFIG_DEFAULT: dict[str, GSC] = {
     "NTEAnnIds": GsListConfig(
@@ -80,11 +95,7 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "打开后同账号下的幻塔角色也会一起签；老账号首次打开后需要执行一次【刷新令牌】补拉幻塔角色",
         False,
     ),
-    "NTESignTime": GsTimeRConfig(
-        "定时签到时间",
-        "每天自动签到时间（时, 分），重启后生效",
-        (0, 30),
-    ),
+    "NTESignTime": _sign_time_config,
     "NTESignAll": GsBoolConfig(
         "定时签全员",
         "开启后定时任务签所有已登录账号；关闭则只签发送过【开启自动签到】的账号",
@@ -123,10 +134,10 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "每次浏览/点赞/分享之间随机 sleep 的 [min, max]",
         [1, 3],
     ),
-    "NTESignBatchDelay": GsTimeRConfig(
+    "NTESignBatchDelay": GsListConfig(
         "批次签到间隔（秒）",
-        "自动签到多账号分批之间的 sleep 窗口 (min, max)",
-        (0, 2),
+        "自动签到多账号分批之间的 sleep 窗口 [min, max]",
+        [0, 2],
     ),
     "NTEGuide": GsListStrConfig(
         "角色攻略图提供方",

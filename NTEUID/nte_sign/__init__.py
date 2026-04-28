@@ -23,7 +23,23 @@ sv_nte_sign_all = SV("nte全部签到", pm=1)
 sv_nte_auto = SV("nte自动签到")
 sv_nte_sign_calendar = SV("nte签到日历")
 
-_sign_hour, _sign_minute = NTEConfig.get_config("NTESignTime").data
+
+def _parse_sign_time() -> tuple[int, int]:
+    raw = NTEConfig.get_config("NTESignTime").data
+    try:
+        if isinstance(raw, str):
+            h, m = raw.split(":")
+            hour, minute = int(h), int(m)
+        else:
+            hour, minute = int(raw[0]), int(raw[1])
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            return hour, minute
+    except (ValueError, TypeError, IndexError):
+        pass
+    return 0, 30
+
+
+_sign_hour, _sign_minute = _parse_sign_time()
 
 
 @sv_nte_sign.on_fullmatch(("签到", "日签"))
