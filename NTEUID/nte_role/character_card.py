@@ -952,7 +952,7 @@ async def _draw_fork(
     lv_y = right_y + max(FORK_GROUP_ICON_W, int(fork_name_font.size)) + vw(4)
     draw.text(
         (right_x, lv_y),
-        f"Lv.{fork.slev}/{fork.alev}",
+        f"Lv.{fork.alev}",
         font=fork_lv_font,
         fill=COLOR_BODY_TEXT,
         anchor="lt",
@@ -1146,8 +1146,7 @@ def _suit_section_h(suit: CharacterSuit, width: int) -> int:
         return 0
     head_h = _section_header_h()
     suit_top_h = round(SUIT_TOP_BG.height * width / SUIT_TOP_BG.width)
-    pie_visible = suit.pie[: suit.suit_activate_num] if suit.suit_activate_num else suit.pie
-    drives = [*suit.core, *pie_visible]
+    drives = [*suit.core, *suit.pie]
     drive_rows = (len(drives) + 1) // 2
 
     drives_h = 0
@@ -1216,8 +1215,7 @@ async def _draw_suit(
     cursor += top_h + SUIT_TOP_BOTTOM_GAP
 
     # drives 2-col grid
-    pie_visible = suit.pie[: suit.suit_activate_num] if suit.suit_activate_num else suit.pie
-    drives = [*suit.core, *pie_visible]
+    drives = [*suit.core, *suit.pie]
     card_w = (width - DRIVE_GRID_GAP_X) // 2
     for row_idx in range((len(drives) + 1) // 2):
         row_items = drives[row_idx * 2 : row_idx * 2 + 2]

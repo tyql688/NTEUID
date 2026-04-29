@@ -253,16 +253,20 @@ class CharacterFork(_TajiduoModel):
 
     id: str = ""
     name: str = ""
-    alev: str = "0"
-    blev: str = "0"
-    slev: str = "0"
-    quality: CharQuality | None = None
-    group_type: CharGroup | None = Field(None, alias="groupType")
-    des: str = ""
-    buff_name: str = Field("", alias="buffName")
-    buff_des: str = Field("", alias="buffDes")
-    lbd: list[str] = Field(default_factory=list)
-    properties: list[CharacterProperty] = Field(default_factory=list)
+    alev: str = Field(default="0", description="武器等级")
+    blev: str = Field(default="0", description="突破阶数（右侧星数）")
+    slev: str = Field(default="0", description="混频等级（精炼/共鸣阶）")
+    quality: CharQuality | None = Field(default=None, description="弧盘品质（橙/紫/蓝）")
+    group_type: CharGroup | None = Field(default=None, alias="groupType", description="命途/组别（左上角图标）")
+    des: str = Field(default="", description="弧盘背景文案 / 故事描述")
+    buff_name: str = Field(default="", alias="buffName", description="绑定 Buff 名，如「司令虎符」")
+    buff_des: str = Field(
+        default="",
+        alias="buffDes",
+        description="Buff 描述模板，含 <lv>{N}</> 占位符，需与 lbd 联合渲染",
+    )
+    lbd: list[str] = Field(default_factory=list, description="等级数值表，按下标替换 buff_des 的 {N} 占位符")
+    properties: list[CharacterProperty] = Field(default_factory=list, description="武器面板属性（基础攻击力 / 副词条）")
 
 
 class CharacterSuitItem(_TajiduoModel):
