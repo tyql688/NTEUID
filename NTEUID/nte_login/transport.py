@@ -218,7 +218,7 @@ class WsTransport(_Base):
 
         try:
             async with asyncio.timeout(_login_ttl_s()):
-                async with connect(url, open_timeout=START_TIMEOUT_S) as ws:
+                async with connect(url, open_timeout=START_TIMEOUT_S, proxy=None) as ws:
                     async for raw in ws:
                         payload = _StatusModel.model_validate(json.loads(raw))
                         terminal = _to_result(payload)
