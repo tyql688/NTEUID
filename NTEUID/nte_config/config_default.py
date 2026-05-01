@@ -107,10 +107,20 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         5,
         max_value=30,
     ),
-    "NTESignMaster": GsBoolConfig(
-        "签到结果推送给主人",
-        "开启后会把每日签到汇总推送给主人",
+    "NTESignPushPrivate": GsBoolConfig(
+        "签到结果推送私聊",
+        "私聊开启自动签到的用户，定时签到完成后推送给本人私聊",
         False,
+    ),
+    "NTESignPushGroup": GsBoolConfig(
+        "签到结果推送群聊",
+        "群里开启自动签到的用户，定时签到完成后按群聚合推送回该群",
+        False,
+    ),
+    "NTESignPushPic": GsBoolConfig(
+        "签到推送带标题图",
+        "群推送时使用汇总标题图；关闭则发简要文字",
+        True,
     ),
     "NTETaskDaily": GsBoolConfig(
         "开启社区任务",
@@ -120,7 +130,7 @@ CONFIG_DEFAULT: dict[str, GSC] = {
     "NTETaskKinds": GsListStrConfig(
         "参与的社区任务",
         "勾选哪些每日金币任务自动做",
-        [TASK_KEY_BROWSE_POST, TASK_KEY_LIKE_POST, TASK_KEY_SHARE],
+        data=[TASK_KEY_BROWSE_POST, TASK_KEY_LIKE_POST, TASK_KEY_SHARE],
         options=[TASK_KEY_BROWSE_POST, TASK_KEY_LIKE_POST, TASK_KEY_SHARE],
     ),
     "NTETaskMaxFailures": GsIntConfig(
@@ -142,7 +152,7 @@ CONFIG_DEFAULT: dict[str, GSC] = {
     "NTEGuide": GsListStrConfig(
         "角色攻略图提供方",
         "使用 nte 角色攻略时选择的提供方",
-        ["all"],
+        data=["all"],
         options=["all", "零号攻略组"],
     ),
     "NTEProxyUrl": GsStrConfig(

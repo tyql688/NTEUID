@@ -271,6 +271,22 @@
                 "need_admin": true
             },
             {
+                "name": "订阅签到结果",
+                "desc": "订阅每日定时签到的全局汇总文本",
+                "eg": "订阅签到结果",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": true
+            },
+            {
+                "name": "取消订阅签到结果",
+                "desc": "取消订阅签到结果汇总",
+                "eg": "取消订阅签到结果",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": true
+            },
+            {
                 "name": "更新记录",
                 "desc": "查看插件 git 更新记录",
                 "eg": "更新记录",

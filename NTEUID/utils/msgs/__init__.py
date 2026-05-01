@@ -63,6 +63,7 @@ class SignMsg:
     AUTO_NO_ACCOUNT = CommonMsg.NOT_LOGGED_IN
     AUTO_ENABLED = "已开启自动签到"
     AUTO_DISABLED = "已关闭自动签到"
+    AUTO_DAILY_DISABLED = "定时签到功能已关闭"
     CALENDAR_LOAD_FAILED = "签到日历加载失败，请稍后再试"
     CALENDAR_EMPTY = "暂无签到奖励数据"
 

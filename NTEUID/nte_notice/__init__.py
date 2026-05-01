@@ -6,11 +6,11 @@ from gsuid_core.aps import scheduler
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
-from gsuid_core.subscribe import gs_subscribe
 
 from .notice import get_notice, get_all_notice_list
 from ..utils.msgs import NoticeMsg, send_nte_notify
 from .notice_card import draw_notice_detail_img
+from ..utils.subscribe import TOPIC_NOTICE, list_subscribers, subscribe_session, unsubscribe_session
 from ..utils.sdk.tajiduo import tajiduo_web
 from ..nte_config.nte_config import NTEConfig
 from ..utils.sdk.tajiduo_model import TajiduoError
@@ -18,7 +18,6 @@ from ..utils.sdk.tajiduo_model import TajiduoError
 sv_nte_notice = SV("nte公告")
 sv_nte_notice_sub = SV("订阅NTE公告", pm=3)
 
-TASK_NAME_NOTICE = "订阅NTE公告"
 ANN_CHECK_MIN: int = NTEConfig.get_config("NTEAnnCheckMinutes").data
 
 
@@ -34,12 +33,8 @@ async def sub_nte_notice(bot: Bot, ev: Event):
     if not NTEConfig.get_config("NTEAnnOpen").data:
         return await send_nte_notify(bot, ev, NoticeMsg.PUSH_CLOSED)
 
-    data = await gs_subscribe.get_subscribe(TASK_NAME_NOTICE)
-    if data and any(sub.group_id == ev.group_id for sub in data):
-        return await send_nte_notify(bot, ev, NoticeMsg.ALREADY_SUBSCRIBED)
-
-    await gs_subscribe.add_subscribe("session", TASK_NAME_NOTICE, ev, extra_message="")
-    await send_nte_notify(bot, ev, NoticeMsg.SUBSCRIBED)
+    existed = await subscribe_session(TOPIC_NOTICE, ev, extra_message="")
+    await send_nte_notify(bot, ev, NoticeMsg.ALREADY_SUBSCRIBED if existed else NoticeMsg.SUBSCRIBED)
 
 
 @sv_nte_notice_sub.on_fullmatch(("取消订阅公告", "退订公告"))
@@ -47,9 +42,7 @@ async def unsub_nte_notice(bot: Bot, ev: Event):
     if not ev.group_id:
         return await send_nte_notify(bot, ev, NoticeMsg.UNSUBSCRIBE_GROUP_ONLY)
 
-    data = await gs_subscribe.get_subscribe(TASK_NAME_NOTICE)
-    if data and any(sub.group_id == ev.group_id for sub in data):
-        await gs_subscribe.delete_subscribe("session", TASK_NAME_NOTICE, ev)
+    if await unsubscribe_session(TOPIC_NOTICE, ev):
         return await send_nte_notify(bot, ev, NoticeMsg.UNSUBSCRIBED)
 
     return await send_nte_notify(bot, ev, NoticeMsg.NOT_SUBSCRIBED)
@@ -64,7 +57,7 @@ async def check_nte_notice():
 
 async def check_nte_notice_state():
     logger.info("[异环公告] 定时任务: 异环公告查询..")
-    subs = await gs_subscribe.get_subscribe(TASK_NAME_NOTICE)
+    subs = await list_subscribers(TOPIC_NOTICE)
     if not subs:
         logger.info("[异环公告] 暂无群订阅")
         return
@@ -99,7 +92,10 @@ async def check_nte_notice_state():
             continue
 
         for sub in subs:
-            await sub.send(img)  # type: ignore
+            try:
+                await sub.send(img)  # type: ignore
+            except Exception as error:
+                logger.warning(f"[异环公告] 推送失败 postId={post.post_id} group={sub.group_id}: {error!r}")
             await asyncio.sleep(random.uniform(1, 3))
 
     logger.info("[异环公告] 推送完毕")

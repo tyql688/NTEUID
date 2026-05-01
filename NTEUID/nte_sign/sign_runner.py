@@ -29,6 +29,16 @@ _account_locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 batch_lock = asyncio.Lock()
 
 
+@dataclass(frozen=True)
+class PerUserSignReport:
+    """`(user_id, bot_id)` 维度的签到汇总，给推送层按订阅清单分发。"""
+
+    user_id: str
+    bot_id: str
+    text: str
+    has_failure: bool
+
+
 @dataclass
 class _StatusCounter:
     ok: int = 0
@@ -59,15 +69,16 @@ async def run_user_sign(user_id: str, bot_id: str) -> str:
     return "\n".join(blocks) if len(blocks) == 1 else "\n---\n".join(blocks)
 
 
-async def run_all_sign() -> str | None:
-    """繁忙返回 None，调用方决定用 send_nte_notify 发忙提示。"""
+async def run_all_sign() -> tuple[str, list[PerUserSignReport]] | None:
+    """繁忙返回 None；输出与 `run_scheduled_sign` 对齐。"""
     if batch_lock.locked():
         return None
     async with batch_lock:
         return await _run_batch(await NTEUser.list_sign_targets_all(), "异环全部签到：")
 
 
-async def run_scheduled_sign() -> str | None:
+async def run_scheduled_sign() -> tuple[str, list[PerUserSignReport]] | None:
+    """繁忙返回 None；返回 `(全局汇总, per-user 子报告)`。"""
     if batch_lock.locked():
         return None
     async with batch_lock:
@@ -78,9 +89,9 @@ async def run_scheduled_sign() -> str | None:
         return await _run_batch(users, header)
 
 
-async def _run_batch(users: list[NTEUser], header: str) -> str:
+async def _run_batch(users: list[NTEUser], header: str) -> tuple[str, list[PerUserSignReport]]:
     if not users:
-        return f"{header}\n  · {SignMsg.NO_SIGN_ACCOUNT}"
+        return f"{header}\n  · {SignMsg.NO_SIGN_ACCOUNT}", []
     groups = _group_by_center(users)
     semaphore = asyncio.Semaphore(NTEConfig.get_config("NTESignConcurrency").data)
     delay_lo, delay_hi = NTEConfig.get_config("NTESignBatchDelay").data
@@ -103,7 +114,46 @@ async def _run_batch(users: list[NTEUser], header: str) -> str:
             crashed += 1
         else:
             results.append(item)
-    return _format_batch_summary(header, results, crashed)
+    summary = _format_batch_summary(header, results, crashed)
+    reports = _aggregate_per_user(groups, raw)
+    return summary, reports
+
+
+def _aggregate_per_user(
+    groups: list[list[NTEUser]],
+    raw: list[SignAccountResult | BaseException],
+) -> list[PerUserSignReport]:
+    """同 `(user_id, bot_id)` 下多 center_uid 文本拼起来；任一失败标 has_failure。
+    全部 center_uid 都是 ALL_DONE（本地短路无动作）的 user 直接跳过，不进推送。"""
+    texts: dict[tuple[str, str], list[str]] = {}
+    failed: dict[tuple[str, str], bool] = {}
+    has_action: dict[tuple[str, str], bool] = {}
+    for group, item in zip(groups, raw):
+        primary = group[0]
+        key = (primary.user_id, primary.bot_id)
+        if isinstance(item, BaseException):
+            texts.setdefault(key, []).append(f"[塔吉多账号 {primary.center_uid}] · 签到异常")
+            failed[key] = True
+            has_action[key] = True
+            continue
+        texts.setdefault(key, []).append(item.text)
+        failed[key] = failed.get(key, False) or item.status in {
+            AccountStatus.PARTIAL_FAILED,
+            AccountStatus.AUTH_FAILED,
+            AccountStatus.BUSY,
+        }
+        if item.status != AccountStatus.ALL_DONE:
+            has_action[key] = True
+    return [
+        PerUserSignReport(
+            user_id=user_id,
+            bot_id=bot_id,
+            text="\n---\n".join(texts[(user_id, bot_id)]),
+            has_failure=failed[(user_id, bot_id)],
+        )
+        for (user_id, bot_id) in texts
+        if has_action.get((user_id, bot_id))
+    ]
 
 
 _DONE_GROUPS: list[tuple[AccountStatus, str]] = [
