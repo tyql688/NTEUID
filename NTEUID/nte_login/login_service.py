@@ -19,7 +19,9 @@ from ..utils.utils import get_public_ip
 from ..utils.database import NTEUser
 from ..utils.constants import LAOHU_APP_ID, LAOHU_APP_KEY
 from ..utils.sdk.laohu import LaohuClient, LaohuDevice
+from ..utils.background import create_background_task
 from ..utils.sdk.tajiduo import TajiduoClient
+from ..nte_role.role_cache import save_role_characters_cache
 from ..utils.game_registry import PRIMARY_GAME_ID, GAME_SIGN_SWITCHES
 from ..nte_config.nte_config import NTEConfig
 from ..utils.sdk.tajiduo_model import GameRoleList, TajiduoError
@@ -187,6 +189,7 @@ async def login_by_laohu_token(bot: Bot, ev: Event, laohu_token: str, laohu_user
         f"[NTE登录] user_id={ev.user_id} center_uid={tj_session.center_uid} roles={[rid for rid, _, _ in roles]} 登录完成"
     )
     await send_nte_notify(bot, ev, LoginMsg.TAJIDUO_SUCCESS)
+    create_background_task(_auto_refresh_role_panel(tajiduo, roles))
 
 
 def _auth_token(user_id: str) -> str:
@@ -237,7 +240,24 @@ async def perform_login(auth_token: str, mobile: str, code: str) -> LoginResult:
     logger.info(
         f"[NTE登录] user_id={state.user_id} center_uid={tj_session.center_uid} roles={[rid for rid, _, _ in roles]} 登录完成"
     )
+    create_background_task(_auto_refresh_role_panel(tajiduo, roles))
     return LoginResult.success(msg=LoginMsg.TAJIDUO_SUCCESS)
+
+
+async def _auto_refresh_role_panel(tajiduo: TajiduoClient, roles: list[tuple[str, str, str]]) -> None:
+    """登录成功后预拉一次主游戏角色详情落本地缓存，让用户登录完直接 `查询` 就能看到最新面板，
+    不必再手动跑【刷新面板】。fire-and-forget 后台跑，任何失败只 warn 不传播——
+    下次手动【刷新面板】会重试。"""
+    for role_id, _, game_id in roles:
+        if game_id != PRIMARY_GAME_ID:
+            continue
+        try:
+            characters = await tajiduo.get_role_characters_data(role_id)
+            await save_role_characters_cache(role_id, characters)
+        except Exception as error:
+            logger.warning(f"[NTE登录] 自动刷新角色面板失败 roleId={role_id}: {error!r}")
+            continue
+        logger.debug(f"[NTE登录] 自动刷新角色面板 roleId={role_id} 完成")
 
 
 async def _collect_all_roles(tajiduo: TajiduoClient) -> list[tuple[str, str, str]]:
