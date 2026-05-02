@@ -85,6 +85,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "开启后把登录消息包在合并转发里，避免链接风控",
         False,
     ),
+    "NTELoginAutoPanel": GsBoolConfig(
+        "登录后自动发送角色面板",
+        "登录成功后自动渲染并发送一张角色面板图；关闭则只静默预拉缓存",
+        True,
+    ),
     "NTESignDaily": GsBoolConfig(
         "开启每日签到",
         "关闭后将不再执行定时签到任务",

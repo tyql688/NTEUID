@@ -20,7 +20,6 @@ from .login_service import (
     mark_login_failed,
 )
 from ..utils.sdk.laohu import LaohuError
-from ..utils.sdk.tajiduo_model import TajiduoError
 from ..utils.resource.RESOURCE_PATH import NTE_TEMPLATES
 
 _MOBILE_RE = re.compile(r"^1\d{10}$")
@@ -61,7 +60,7 @@ async def nte_login_page(auth_token: str):
             msg={
                 "smsSent": LoginMsg.SMS_SENT,
                 "smsSendFailed": LoginMsg.SMS_SEND_FAILED,
-                "loginSuccess": LoginMsg.SUCCESS,
+                "loginSuccess": LoginMsg.SMS_VERIFIED,
                 "loginFailed": LoginMsg.USER_CENTER_LOGIN_FAILED,
             },
         )
@@ -92,16 +91,14 @@ async def nte_perform_login(payload: _LoginPayload, _request: Request) -> JSONRe
     if not _CODE_RE.match(payload.code):
         return _json(LoginResult.fail(LoginMsg.CODE_INVALID))
 
+    # 塔吉多登录原子搬到了命令段（login_by_laohu_token），TajiduoError 不会从这里冒出来；
+    # 这里只兜短信验证阶段的 LaohuError。
     try:
         return _json(await perform_login(payload.auth, payload.mobile, payload.code))
     except LaohuError as error:
         mark_login_failed(payload.auth, LoginMsg.SMS_LOGIN_FAILED)
         logger.warning(f"[NTE登录] 老虎短信登录失败 user_id={_login_user_id(payload.auth)}: {error.message}")
         return _json(LoginResult.fail(LoginMsg.SMS_LOGIN_FAILED))
-    except TajiduoError as error:
-        mark_login_failed(payload.auth, LoginMsg.USER_CENTER_LOGIN_FAILED)
-        logger.warning(f"[NTE登录] 塔吉多登录失败 user_id={_login_user_id(payload.auth)}: {error.message}")
-        return _json(LoginResult.fail(LoginMsg.USER_CENTER_LOGIN_FAILED))
 
 
 @app.get("/nte/status/{auth_token}")

@@ -30,6 +30,7 @@ class LoginMsg:
     CODE_INVALID = "验证码格式错误"
     SMS_SENT = "验证码已发送"
     SMS_SEND_FAILED = "验证码发送失败，请稍后再试"
+    SMS_VERIFIED = "短信验证通过，请回到对话查看登录结果"
     NOT_LOGGED_IN = "你还没有登录塔吉多账号"
     LOGOUT_DONE = "已退出登录，所有塔吉多账号已删除"
     REFRESH_NO_ACCOUNT = "你还没有登录塔吉多账号"
