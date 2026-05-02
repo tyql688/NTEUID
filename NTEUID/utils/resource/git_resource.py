@@ -58,28 +58,58 @@ async def update_resources(
 
     try:
         if _is_git_repo():
-            cmd = "git fetch origin && git reset --hard origin/HEAD" if is_force else "git pull origin HEAD"
             if not silent:
-                logger.info(f"[NTEUID] 执行资源更新: {cmd}")
+                logger.info(f"[NTEUID] 执行资源更新: {'force' if is_force else 'normal'}")
 
-            rc, stdout, stderr = await _exec_git(cmd, cwd=META_PATH)
+            # 记录旧 HEAD，用于后续 diff 统计
+            rc, old_head, _ = await _exec_git(
+                "git rev-parse HEAD",
+                cwd=META_PATH,
+            )
+            old_head = old_head.strip()
+
+            if is_force:
+                rc, stdout, stderr = await _exec_git(
+                    "git fetch origin && git reset --hard origin/HEAD",
+                    cwd=META_PATH,
+                )
+            else:
+                rc, stdout, stderr = await _exec_git(
+                    "git pull origin HEAD",
+                    cwd=META_PATH,
+                )
 
             if rc != 0:
                 err = stderr.strip() or stdout.strip()
                 result["message"] = f"更新失败: {err}"
                 logger.error(f"[NTEUID] 资源更新失败: {err}")
-            elif re.search(r"Already up[ -]to[ -]date|已经是最新的", stdout):
+                return result
+
+            # 获取新 HEAD
+            rc2, new_head, _ = await _exec_git(
+                "git rev-parse HEAD",
+                cwd=META_PATH,
+            )
+            new_head = new_head.strip()
+
+            if old_head == new_head:
                 result["success"] = True
                 result["message"] = "已是最新"
                 if not silent:
                     logger.info("[NTEUID] 资源已是最新")
-            else:
-                num_match = re.search(r"(\d+) files? changed", stdout)
-                files_changed = int(num_match.group(1)) if num_match else 0
-                result["success"] = True
-                result["files_changed"] = files_changed
-                result["message"] = f"更新成功，改动了{files_changed}个文件" if files_changed else "更新成功"
-                logger.success(f"[NTEUID] 资源{result['message']}")
+                return result
+
+            # 有变更，统计文件数
+            rc3, diff_out, _ = await _exec_git(
+                f"git diff --stat {old_head} {new_head}",
+                cwd=META_PATH,
+            )
+            num_match = re.search(r"(\d+) files? changed", diff_out)
+            files_changed = int(num_match.group(1)) if num_match else 0
+            result["success"] = True
+            result["files_changed"] = files_changed
+            result["message"] = f"更新成功，改动了{files_changed}个文件" if files_changed else "更新成功"
+            logger.success(f"[NTEUID] 资源{result['message']}")
             return result
 
         # 首次安装
