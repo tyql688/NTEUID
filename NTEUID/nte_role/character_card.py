@@ -497,13 +497,15 @@ async def _draw_portrait(
     layer.alpha_composite(_make_nte_watermark(panel_w, panel_h), (0, 0))
 
     # 半身像 h-vw-226 w-full
+    # 都按宽度铺满；CDN 半身像保留垂直居中裁，本地 FASHION 全身立绘 (h>w) 改锚顶部裁，保住头部
     art = await get_char_detail_img(character.id)
     if art is not None:
         art = art.convert("RGBA")
-        ratio = panel_w / art.width
-        new_h = round(art.height * ratio)
+        aw, ah = art.size
+        ratio = panel_w / aw
+        new_h = round(ah * ratio)
         scaled = art.resize((panel_w, new_h), Image.Resampling.LANCZOS)
-        crop_top = max(0, (new_h - panel_h) // 2)
+        crop_top = 0 if ah > aw else max(0, (new_h - panel_h) // 2)
         layer.alpha_composite(scaled.crop((0, crop_top, panel_w, crop_top + panel_h)), (0, 0))
 
     # 底部黑带（h-vw-33 absolute bottom-0 bg-black/70）

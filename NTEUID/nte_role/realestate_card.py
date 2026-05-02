@@ -20,7 +20,7 @@ from ..utils.image import (
     make_nte_role_title,
 )
 from ..utils.resource.cdn import (
-    get_char_tall_img,
+    get_avatar_img,
     get_furniture_img,
     get_realestate_img,
 )
@@ -112,7 +112,7 @@ async def _prepare(house: House) -> PreparedHouse:
         except json.JSONDecodeError:
             char_ids = []
         for cid in char_ids:
-            img = await get_char_tall_img(str(cid))
+            img = await get_avatar_img(str(cid))
             if img is not None:
                 fitted = ImageOps.fit(
                     img, (CHAR_AVATAR_SIZE, CHAR_AVATAR_SIZE), Image.Resampling.LANCZOS, centering=(0.5, 0.15)

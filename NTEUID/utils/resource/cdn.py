@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from typing import ParamSpec
 from pathlib import Path
 from functools import wraps
@@ -13,7 +14,6 @@ from .RESOURCE_PATH import (
     ROLE_ART_PATH,
     AREA_TYPE_PATH,
     AREA_WIDE_PATH,
-    ROLE_TALL_PATH,
     AREA_SMALL_PATH,
     ROLE_GROUP_PATH,
     ROLE_SKILL_PATH,
@@ -26,11 +26,26 @@ from .RESOURCE_PATH import (
     VEHICLE_MODEL_PATH,
     ROLE_CITY_SKILL_PATH,
     ROLE_SUIT_DRIVE_PATH,
+    STATIC_RESOURCE_PATH,
     ROLE_GROUP_BLACK_PATH,
     ROLE_SUIT_DETAIL_PATH,
     REALESTATE_DETAIL_PATH,
     REALESTATE_FURNITURE_PATH,
 )
+
+# 本地缓存目录
+AVATAR_LOCAL_DIR = STATIC_RESOURCE_PATH / "char" / "avatar"  # 角色头像
+FASHION_LOCAL_DIR = STATIC_RESOURCE_PATH / "char" / "fashion"  # 角色全身立绘
+FORK_LOCAL_DIR = STATIC_RESOURCE_PATH / "fork"  # 武器
+
+
+def _pick_local_image(local_dir: Path) -> Image.Image | None:
+    if local_dir.is_dir():
+        files = [f for f in local_dir.iterdir() if f.is_file()]
+        if files:
+            return Image.open(random.choice(files))
+    return None
+
 
 CDN_BASE = "https://webstatic.tajiduo.com/bbs/yh-game-records-web-source"
 
@@ -92,6 +107,9 @@ async def get_achievement_img(category_id: str) -> Image.Image:
 # 示例: get_avatar_img(home.avatar) -> {CDN}/avatar/square/1010.PNG
 @safe_load_image
 async def get_avatar_img(avatar_id: str) -> Image.Image:
+    img = _pick_local_image(AVATAR_LOCAL_DIR / avatar_id)
+    if img is not None:
+        return img
     return await _get(ROLE_AVATAR_PATH, f"avatar/square/{avatar_id}.PNG")
 
 
@@ -99,14 +117,10 @@ async def get_avatar_img(avatar_id: str) -> Image.Image:
 # 示例: get_char_detail_img("1019") -> {CDN}/character/detail/1019.png
 @safe_load_image
 async def get_char_detail_img(char_id: str) -> Image.Image:
+    img = _pick_local_image(FASHION_LOCAL_DIR / char_id)
+    if img is not None:
+        return img
     return await _get(ROLE_ART_PATH, f"character/detail/{char_id}.png")
-
-
-# 角色全身立绘
-# 示例: get_char_tall_img("1019") -> {CDN}/character/tall/1019.PNG
-@safe_load_image
-async def get_char_tall_img(char_id: str) -> Image.Image:
-    return await _get(ROLE_TALL_PATH, f"character/tall/{char_id}.PNG")
 
 
 # 阵营徽章（彩色版）。id 必须是完整枚举值 `CHARACTER_GROUP_TYPE_ONE…FIVE`，即 `char.group_type.value`
@@ -156,6 +170,9 @@ async def get_char_city_skill_img(skill_id: str) -> Image.Image:
 # 示例: get_weapon_img("fork_tigertally") -> {CDN}/character/fork/fork_tigertally.png  (娜娜莉·预备备)
 @safe_load_image
 async def get_weapon_img(fork_id: str) -> Image.Image:
+    img = _pick_local_image(FORK_LOCAL_DIR / fork_id)
+    if img is not None:
+        return img
     return await _get(WEAPON_PATH, f"character/fork/{fork_id}.png")
 
 

@@ -25,7 +25,6 @@ USER_CHAR_ALIAS_PATH = ALIAS_PATH / "char_alias.json"
 ROLE_PATH = MAIN_PATH / "role"
 ROLE_CARD_PATH = ROLE_PATH / "card"
 ROLE_ART_PATH = ROLE_PATH / "detail"
-ROLE_TALL_PATH = ROLE_PATH / "tall"
 ROLE_SKILL_PATH = ROLE_PATH / "skill"
 ROLE_CITY_SKILL_PATH = ROLE_PATH / "city_skill"
 ROLE_AVATAR_PATH = ROLE_PATH / "avatar"
@@ -79,7 +78,6 @@ def init_dir():
         ROLE_PATH,
         ROLE_CARD_PATH,
         ROLE_ART_PATH,
-        ROLE_TALL_PATH,
         ROLE_SKILL_PATH,
         ROLE_CITY_SKILL_PATH,
         ROLE_AVATAR_PATH,
