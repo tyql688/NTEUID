@@ -46,6 +46,16 @@ def _is_git_repo() -> bool:
     return (META_PATH / ".git").is_dir()
 
 
+async def _detect_default_branch() -> str:
+    # `git init` 流派下没有 origin/HEAD symref，本地分支名也不可信
+    # （旧 buggy 安装可能落下 master 本地分支但远端是 main），所以走 ls-remote 现问。
+    rc, ls_out, _ = await _exec_git(f"git ls-remote --symref {RESOURCE_URL} HEAD")
+    if rc != 0:
+        return "main"
+    m = re.search(r"ref:\s+refs/heads/(\S+)", ls_out)
+    return m.group(1) if m else "main"
+
+
 async def update_resources(
     is_force: bool = False,
     silent: bool = False,
@@ -61,8 +71,9 @@ async def update_resources(
             if not silent:
                 logger.info(f"[NTEUID] 执行资源更新: {'force' if is_force else 'normal'}")
 
-            # 记录旧 HEAD，用于后续 diff 统计
-            rc, old_head, _ = await _exec_git(
+            branch = await _detect_default_branch()
+
+            _, old_head, _ = await _exec_git(
                 "git rev-parse HEAD",
                 cwd=META_PATH,
             )
@@ -70,12 +81,12 @@ async def update_resources(
 
             if is_force:
                 rc, stdout, stderr = await _exec_git(
-                    "git fetch origin && git reset --hard origin/HEAD",
+                    f"git fetch origin {branch} && git reset --hard origin/{branch}",
                     cwd=META_PATH,
                 )
             else:
                 rc, stdout, stderr = await _exec_git(
-                    "git pull origin HEAD",
+                    f"git pull origin {branch}",
                     cwd=META_PATH,
                 )
 
@@ -85,7 +96,6 @@ async def update_resources(
                 logger.error(f"[NTEUID] 资源更新失败: {err}")
                 return result
 
-            # 获取新 HEAD
             _, new_head, _ = await _exec_git(
                 "git rev-parse HEAD",
                 cwd=META_PATH,
@@ -99,7 +109,6 @@ async def update_resources(
                     logger.info("[NTEUID] 资源已是最新")
                 return result
 
-            # 有变更，统计文件数
             _, diff_out, _ = await _exec_git(
                 f"git diff --stat {old_head} {new_head}",
                 cwd=META_PATH,
@@ -112,19 +121,9 @@ async def update_resources(
             logger.success(f"[NTEUID] 资源{result['message']}")
             return result
 
-        # 首次安装
         logger.info(f"[NTEUID] 执行资源安装: {RESOURCE_URL}")
 
-        # `git init` + `git remote add` + `git fetch` 不会建立 origin/HEAD 这个 symbolic-ref
-        # （只有 `git clone` 会建），所以这里得自己探一下默认分支名
-        rc, ls_out, ls_err = await _exec_git(f"git ls-remote --symref {RESOURCE_URL} HEAD")
-        if rc != 0:
-            err = ls_err.strip() or ls_out.strip()
-            result["message"] = f"安装失败 (探测默认分支): {err}"
-            logger.error(f"[NTEUID] 资源安装失败 (探测默认分支): {err}")
-            return result
-        m = re.search(r"ref:\s+refs/heads/(\S+)", ls_out)
-        default_branch = m.group(1) if m else "main"
+        default_branch = await _detect_default_branch()
 
         cmds = [
             "git init",
@@ -155,7 +154,12 @@ async def update_resources(
 async def init_resources() -> None:
     is_repo = _is_git_repo()
     logger.info("[NTEUID] 资源包已存在, 开始自动更新..." if is_repo else "[NTEUID] 未检测到资源包，开始自动安装...")
-    await update_resources(is_force=is_repo, silent=False)
+    result = await update_resources(is_force=is_repo, silent=False)
+    if result["success"]:
+        # 覆盖首启时插件导入留下的空 dict
+        from ..name_convert import load_char_meta
+
+        load_char_meta()
 
 
 async def start_resources() -> None:

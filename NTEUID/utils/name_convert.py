@@ -50,6 +50,10 @@ def load_char_meta() -> None:
     char_alias_data = {}
     char_id_to_name_data = {}
 
+    # 首启时资源还没同步下来，留空让查询返回 None；init_resources 落盘后会重调一次
+    if not CHAR_META_PATH.exists():
+        return
+
     user_aliases = load_user_char_aliases().root
 
     for char_id, meta in _load_char_meta_file().root.items():
