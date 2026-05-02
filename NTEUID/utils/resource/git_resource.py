@@ -86,7 +86,7 @@ async def update_resources(
                 return result
 
             # 获取新 HEAD
-            rc2, new_head, _ = await _exec_git(
+            _, new_head, _ = await _exec_git(
                 "git rev-parse HEAD",
                 cwd=META_PATH,
             )
@@ -100,7 +100,7 @@ async def update_resources(
                 return result
 
             # 有变更，统计文件数
-            rc3, diff_out, _ = await _exec_git(
+            _, diff_out, _ = await _exec_git(
                 f"git diff --stat {old_head} {new_head}",
                 cwd=META_PATH,
             )
@@ -115,11 +115,22 @@ async def update_resources(
         # 首次安装
         logger.info(f"[NTEUID] 执行资源安装: {RESOURCE_URL}")
 
+        # `git init` + `git remote add` + `git fetch` 不会建立 origin/HEAD 这个 symbolic-ref
+        # （只有 `git clone` 会建），所以这里得自己探一下默认分支名
+        rc, ls_out, ls_err = await _exec_git(f"git ls-remote --symref {RESOURCE_URL} HEAD")
+        if rc != 0:
+            err = ls_err.strip() or ls_out.strip()
+            result["message"] = f"安装失败 (探测默认分支): {err}"
+            logger.error(f"[NTEUID] 资源安装失败 (探测默认分支): {err}")
+            return result
+        m = re.search(r"ref:\s+refs/heads/(\S+)", ls_out)
+        default_branch = m.group(1) if m else "main"
+
         cmds = [
             "git init",
             f"git remote add origin {RESOURCE_URL}",
-            "git fetch origin --depth=1",
-            "git checkout -f -b main origin/HEAD",
+            f"git fetch origin {default_branch} --depth=1",
+            f"git checkout -f -b {default_branch} FETCH_HEAD",
         ]
 
         for cmd in cmds:
