@@ -293,6 +293,14 @@
                 "need_ck": false,
                 "need_sk": false,
                 "need_admin": true
+            },
+            {
+                "name": "下载全部资源",
+                "desc": "从远程仓库强制更新 NteMeta 资源包",
+                "eg": "下载资源",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": true
             }
         ]
     }
