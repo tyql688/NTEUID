@@ -15,7 +15,7 @@ async def nte_bind_tap_cmd(bot: Bot, ev: Event):
     await run_bind_tap(bot, ev, ev.text.strip())
 
 
-@sv_nte_my_gacha.on_command(("抽卡记录", "我的抽卡", "抽卡"), block=True)
+@sv_nte_my_gacha.on_command(("抽卡记录", "我的抽卡"), block=True)
 async def nte_my_gacha_cmd(bot: Bot, ev: Event):
     # 无参 → 走绑定 tap_id；带参 + NTEGachaUnsafeQuery 开 → 直查任意 tap_id
     await run_my_gacha(bot, ev, ev.text.strip())
