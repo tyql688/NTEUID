@@ -19,8 +19,6 @@ def tap_to_nte(summary: TaptapGachaSummary) -> NTEGachaSummary:
         NTEGachaOverview(
             total_pull_count=summary.overview.total_pull_count,
             total_ssr_count=summary.overview.total_ssr_count,
-            banner_count=summary.overview.banner_count,
-            banner_type_count=summary.overview.banner_type_count,
         )
         if summary.overview is not None
         else None
@@ -28,8 +26,11 @@ def tap_to_nte(summary: TaptapGachaSummary) -> NTEGachaSummary:
 
     sections = [
         NTEGachaSection(
-            banner_id=sec.banner_id,
             banner_name=sec.banner_name,
+            banner_type=sec.banner_type,
+            banner_image=sec.banner_image,
+            begin_time_ts=sec.begin_time_ts,
+            end_time_ts=sec.end_time_ts,
             total_pull_count=sec.total_pull_count,
             ssr_count=sec.ssr_count,
             avg_pity=sec.avg_pity,
@@ -63,8 +64,6 @@ def xhh_to_nte(analysis: LotteryAnalysis) -> NTEGachaSummary:
     overview = NTEGachaOverview(
         total_pull_count=total_pull,
         total_ssr_count=total_ssr,
-        banner_count=sum(1 for p in si.pool_stats if p.cost > 0),
-        banner_type_count=len(si.pool_stats),
     )
 
     pool_cost_map: dict[str, int] = {}
@@ -74,8 +73,9 @@ def xhh_to_nte(analysis: LotteryAnalysis) -> NTEGachaSummary:
 
     sections = [
         NTEGachaSection(
-            banner_id=str(pool.pool_key),
             banner_name=pool.pool_type,
+            banner_type=pool.pool_type,
+            banner_image=(m.group(1) if pool.records and (m := _IMG_ID_RE.search(pool.records[0].img)) else ""),
             total_pull_count=pool_cost_map.get(pool.pool_type, pool_cost_map.get(pool.pool_type.strip(), 0)),
             ssr_count=len(pool.records),
             avg_pity=int(

@@ -10,8 +10,6 @@ class _NteGachaModel(BaseModel):
 class NTEGachaOverview(_NteGachaModel):
     total_pull_count: int = Field(description="总抽数（所有池子加起来）")
     total_ssr_count: int = Field(description="总 S 级命中次数")
-    banner_count: int = Field(description="出现过抽卡的池子数")
-    banner_type_count: int = Field(description="池子类型数")
 
 
 class NTEGachaItem(_NteGachaModel):
@@ -22,8 +20,11 @@ class NTEGachaItem(_NteGachaModel):
 
 
 class NTEGachaSection(_NteGachaModel):
-    banner_id: str = Field(description="池子 ID")
     banner_name: str = Field(description="池子展示名")
+    banner_type: str = Field(default="", description="池子类型")
+    banner_image: str = Field(default="", description="池子代表图 ID（角色 id 或道具 id）")
+    begin_time_ts: int = Field(default=0, description="池子起始时间戳；0 表示来源未提供")
+    end_time_ts: int = Field(default=0, description="池子结束时间戳；0 表示来源未提供")
     total_pull_count: int = Field(description="本池累计抽数")
     ssr_count: int = Field(description="本池 S 命中次数")
     avg_pity: int = Field(description="本池平均出 S 抽数")

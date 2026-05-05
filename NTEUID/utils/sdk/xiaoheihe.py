@@ -67,9 +67,9 @@ def _get_hkey(url_path: str, timestamp: int, nonce: str) -> str:
 # pkey 格式: base64("timestamp.version_heybox_id_random")
 
 
-def _extract_heybox_id_from_pkey(pkey: str) -> str:
+def extract_heybox_id_from_pkey(pkey: str) -> str:
     try:
-        decoded = base64.b64decode(pkey + "=" * (4 - len(pkey) % 4)).decode("utf-8", errors="replace")
+        decoded = base64.b64decode(pkey + "=" * ((4 - len(pkey) % 4) % 4)).decode("utf-8", errors="replace")
         m = re.match(r"^\d+\.\d+_(\d+)", decoded)
         if m:
             return m.group(1)
@@ -94,7 +94,7 @@ class XiaoheiheClient(BaseSdkClient):
         pkey: str = "",
     ) -> None:
         self.pkey = pkey
-        self.heybox_id = _extract_heybox_id_from_pkey(pkey)
+        self.heybox_id = extract_heybox_id_from_pkey(pkey)
 
     def _build_query(self, path: str) -> dict[str, Any]:
         timestamp = int(time.time())

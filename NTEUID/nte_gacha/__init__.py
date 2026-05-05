@@ -26,7 +26,7 @@ async def nte_bind_xhh_cmd(bot: Bot, ev: Event):
 
 @sv_nte_my_gacha.on_command(("抽卡记录", "我的抽卡"), block=True)
 async def nte_my_gacha_cmd(bot: Bot, ev: Event):
-    # 无参 → 优先 TapTap，fallback 小黑盒；带参 + NTEGachaUnsafeQuery 开 → 直查任意 tap_id
+    # 无参 → 优先 TapTap，fallback 小黑盒；带参 + NTEGachaUnsafeQuery 开 → 免校验直查
     await run_my_gacha(bot, ev, ev.text)
 
 

@@ -189,10 +189,12 @@ class XhhBindMsg:
 
 class GachaMsg:
     INVALID_TAP_ID = "TapTap user_id 必须是数字"
+    INVALID_GACHA_QUERY_ID = "抽卡记录参数必须是 TapTap user_id 或小黑盒 user_key"
     TAPTAP_NOT_BOUND = f"该 TapTap 账号未绑定异环角色，\n请先完成绑定：{TAPTAP_BIND_GUIDE_URL}"
     LOAD_FAILED = "抽卡数据获取失败，请稍后再试"
     BIND_ALREADY_SAME = "已绑定该 TapTap 账号"
     XHH_NOT_BOUND = f"未绑定小黑盒账号，请发送【{nte_prefix()}绑定小黑盒】\n或【{nte_prefix()}绑定tap <tapid>】"
+    XHH_TARGET_NOT_BOUND = "该小黑盒账号未绑定异环角色"
     XHH_PKEY_EXPIRED = "小黑盒凭据已失效，请重新绑定"
 
     @classmethod

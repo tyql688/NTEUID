@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import Field, BaseModel, ConfigDict, ValidationError
+from pydantic import Field, BaseModel, ConfigDict, ValidationError, field_validator
 
 from .base import SdkError
 
@@ -27,8 +27,6 @@ class PoolStat(_XiaoheiheModel):
     pool: str = Field(description="池子名称")
     cost: int = Field(description="本池累计抽数")
     ssr: int = Field(description="本池 S 命中次数")
-    miss_up: int = Field(default=0, description="歪的次数")
-    avg: str = Field(description="平均出 S 抽数（字符串，如 '6.0'）")
 
 
 class StatisticInfo(_XiaoheiheModel):
@@ -44,14 +42,8 @@ class StatisticInfo(_XiaoheiheModel):
 class GachaRecordItem(_XiaoheiheModel):
     name: str = Field(description="物品名称")
     img: str = Field(description="物品图标 URL")
-    date: str = Field(description="抽中日期（YYYY-MM-DD）")
-    count: int = Field(description="抽到次数")
     timestamp: int = Field(description="抽中 unix 秒")
     diff: int = Field(description="距离上个 S 的抽数（保底差值）")
-    continuation: int = Field(default=0, description="连金计数")
-    is_extremely_lucky: bool = Field(default=False)
-    is_extremely_unlucky: bool = Field(default=False)
-    color: str = Field(default="", description="展示颜色")
 
 
 class GachaPoolRecord(_XiaoheiheModel):
@@ -72,6 +64,21 @@ class LotteryAnalysis(_XiaoheiheModel):
     statistic_info: StatisticInfo = Field(default_factory=StatisticInfo)
     gacha_record: list[GachaPoolRecord] = Field(default_factory=list)
     user_settings: UserSettings = Field(default_factory=UserSettings)
+
+    @field_validator("header_info", mode="before")
+    @classmethod
+    def _default_header_info(cls, value: Any) -> Any:
+        return {} if value is None else value
+
+    @field_validator("statistic_info", mode="before")
+    @classmethod
+    def _default_statistic_info(cls, value: Any) -> Any:
+        return {} if value is None else value
+
+    @field_validator("user_settings", mode="before")
+    @classmethod
+    def _default_user_settings(cls, value: Any) -> Any:
+        return {} if value is None else value
 
     @property
     def is_empty(self) -> bool:

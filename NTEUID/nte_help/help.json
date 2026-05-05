@@ -229,7 +229,7 @@
         "data": [
             {
                 "name": "绑定小黑盒",
-                "desc": "粘贴 user_pkey 绑定小黑盒；数据更详细（含保底差值、连金数），但 pkey 会过期",
+                "desc": "粘贴 user_pkey 绑定小黑盒；可作为抽卡记录数据源，但 pkey 会过期",
                 "eg": "绑定小黑盒 <user_pkey>",
                 "need_ck": true,
                 "need_sk": false,
@@ -248,6 +248,22 @@
                 "desc": "查询抽卡数据；优先 TapTap，未绑 TapTap 时 fallback 到小黑盒",
                 "eg": "抽卡记录",
                 "need_ck": true,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "抽卡记录TapTap",
+                "desc": "开启抽卡免校验查询后，按 TapTap user_id 直查抽卡记录",
+                "eg": "抽卡记录<TapTapId>",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "抽卡记录小黑盒",
+                "desc": "开启抽卡免校验查询后，使用小黑盒 user_key 查询抽卡记录；只填小黑盒数字 ID 无法查询",
+                "eg": "抽卡记录<小黑盒user_key>",
+                "need_ck": false,
                 "need_sk": false,
                 "need_admin": false
             },
@@ -342,7 +358,7 @@
             {
                 "name": "下载全部资源",
                 "desc": "从远程仓库强制更新 NteMeta 资源包",
-                "eg": "下载资源",
+                "eg": "下载全部资源",
                 "need_ck": false,
                 "need_sk": false,
                 "need_admin": true

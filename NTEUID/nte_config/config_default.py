@@ -171,8 +171,8 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         True,
     ),
     "NTEGachaUnsafeQuery": GsBoolConfig(
-        "TapTap抽卡免校验查询",
-        "开启后【tap抽卡记录 <TapTap user_id>】指令可任意查询，不校验是否为本人绑定；",
+        "抽卡免校验查询",
+        "开启后【抽卡记录 <TapTap user_id>】可直查 TapTap；【抽卡记录 <小黑盒 user_key>】可用小黑盒 user_key 查询；",
         False,
     ),
 }
