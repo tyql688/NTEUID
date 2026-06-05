@@ -135,12 +135,7 @@ def _truncate(draw: ImageDraw.ImageDraw, text: str, font, max_w: int, suffix: st
 
 
 def _pick_card_long_id(summary: NTEGachaSummary) -> str | None:
-    candidates = {
-        item.item_id
-        for section in summary.sections
-        for item in section.items
-        if item.item_id.isdigit()
-    }
+    candidates = {item.item_id for section in summary.sections for item in section.items if item.item_id.isdigit()}
     if not candidates:
         return None
     return random.choice(tuple(candidates))
