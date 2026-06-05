@@ -337,8 +337,9 @@ def get_nte_title_bg(width: int, height: int, *, game: str = "yihuan") -> Image.
 def _load_card_long(card_long_id: str | None = None) -> Image.Image:
     if card_long_id:
         path = CARD_LONG_PATH / f"{card_long_id}.png"
-    else:
-        path = random.choice(list(CARD_LONG_PATH.glob("*.png")))
+        if path.exists():
+            return Image.open(path).convert("RGBA")
+    path = random.choice(list(CARD_LONG_PATH.glob("*.png")))
     return Image.open(path).convert("RGBA")
 
 
