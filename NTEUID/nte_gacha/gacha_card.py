@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from pathlib import Path
 from datetime import datetime
 
@@ -133,6 +134,18 @@ def _truncate(draw: ImageDraw.ImageDraw, text: str, font, max_w: int, suffix: st
     return text + suffix if text else suffix
 
 
+def _pick_card_long_id(summary: NTEGachaSummary) -> str | None:
+    candidates = {
+        item.item_id
+        for section in summary.sections
+        for item in section.items
+        if item.item_id.isdigit()
+    }
+    if not candidates:
+        return None
+    return random.choice(tuple(candidates))
+
+
 async def _load_gacha_icon(item_id: str) -> Image.Image | None:
     if item_id.startswith("fork_"):
         return await get_weapon_img(item_id)
@@ -261,7 +274,7 @@ async def draw_gacha_summary_img(
 
     canvas = get_nte_bg(_PAGE_W, total_h, "bg2")
     canvas.alpha_composite(
-        make_nte_role_title(await get_event_avatar(ev), role_name, role_id),
+        make_nte_role_title(await get_event_avatar(ev), role_name, role_id, card_long_id=_pick_card_long_id(summary)),
         (0, _TITLE_Y),
     )
 
