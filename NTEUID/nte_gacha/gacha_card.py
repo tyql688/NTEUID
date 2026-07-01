@@ -133,6 +133,15 @@ def _truncate(draw: ImageDraw.ImageDraw, text: str, font, max_w: int, suffix: st
     return text + suffix if text else suffix
 
 
+def _pick_char_id(summary: NTEGachaSummary) -> str | None:
+    # section.items 都是已出的 S 级；取第一个角色(数字 item_id)驱动顶部名片背景，没有就交给随机兜底。
+    for section in summary.sections:
+        for item in section.items:
+            if item.item_id.isdigit():
+                return item.item_id
+    return None
+
+
 async def _load_gacha_icon(item_id: str) -> Image.Image | None:
     if item_id.startswith("fork_"):
         return await get_weapon_img(item_id)
@@ -261,7 +270,7 @@ async def draw_gacha_summary_img(
 
     canvas = get_nte_bg(_PAGE_W, total_h, "bg2")
     canvas.alpha_composite(
-        make_nte_role_title(await get_event_avatar(ev), role_name, role_id),
+        make_nte_role_title(await get_event_avatar(ev), role_name, role_id, char_id=_pick_char_id(summary)),
         (0, _TITLE_Y),
     )
 

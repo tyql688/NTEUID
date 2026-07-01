@@ -258,6 +258,11 @@ class GachaMsg:
         return f"【{role_name}】暂无抽卡数据，\n请去数据源刷新后再试"
 
 
-async def send_nte_notify(bot: Bot, ev: Event, msg: str, need_at: bool = True) -> None:
+async def send_nte_notify(
+    bot: Bot,
+    ev: Event,
+    msg: str,
+    need_at: bool = True,
+) -> None:
     at_sender = need_at and bool(ev.group_id)
     await bot.send(f"{TITLE}{msg}", at_sender=at_sender)

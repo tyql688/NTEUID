@@ -90,6 +90,11 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "登录成功后自动渲染并发送一张角色面板图；关闭则只静默预拉缓存",
         True,
     ),
+    "NTERoleOriginalImage": GsBoolConfig(
+        "角色原图功能开关",
+        "开启后，可以引用角色面板图获取上传原图",
+        True,
+    ),
     "NTESignDaily": GsBoolConfig(
         "开启每日签到",
         "关闭后将不再执行定时签到任务",

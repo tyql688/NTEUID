@@ -86,7 +86,8 @@ def load_ability_profiles(char_id: str) -> dict[str, _AbilityProfile]:
                 values=tuple(tuple(arr) for arr in stat.values),
             )
             for stat in ability.stats
-            if _is_damage_stat(stat.name, stat.value_name)
+            # 必须随等级成长(values 非空)：剔除海月「射弹强化倍率=70%」这类字面量强化系数(values=null)，是 buff 非直伤段
+            if _is_damage_stat(stat.name, stat.value_name) and stat.values
         )
         profiles[ability.id.lower()] = _AbilityProfile(
             ability_id=ability.id,

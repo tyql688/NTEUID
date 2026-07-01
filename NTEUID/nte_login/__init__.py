@@ -20,7 +20,7 @@ sv_nte_get_token = SV("nte获取laohutoken", area="DIRECT")
 sv_nte_get_access_token = SV("nte获取accesstoken", area="DIRECT")
 
 
-@sv_nte_login.on_command(("登录", "login"))
+@sv_nte_login.on_command(("登录", "登陆", "login"))
 async def nte_login_cmd(bot: Bot, ev: Event):
     text = re.sub(r'["\n\t ]+', "", ev.text.strip())
     text = text.replace("，", ",")
@@ -41,7 +41,7 @@ async def nte_login_cmd(bot: Bot, ev: Event):
     return await send_nte_notify(bot, ev, LoginMsg.USER_CENTER_LOGIN_FAILED)
 
 
-@sv_nte_login.on_fullmatch(("退出登录", "登出", "logout"))
+@sv_nte_login.on_fullmatch(("退出登录", "退出登陆", "登出", "logout"))
 async def nte_logout_cmd(bot: Bot, ev: Event):
     user = await NTEUser.get_active(ev.user_id, ev.bot_id)
     if user is None:
@@ -66,7 +66,7 @@ async def nte_logout_cmd(bot: Bot, ev: Event):
     await send_nte_notify(bot, ev, LoginMsg.LOGOUT_DONE)
 
 
-@sv_nte_login.on_fullmatch(("全部登出", "退出全部登录"))
+@sv_nte_login.on_fullmatch(("全部登出", "退出全部登录", "退出全部登陆"))
 async def nte_logout_all_cmd(bot: Bot, ev: Event):
     rows = await NTEUser.list_sign_targets_by_user(ev.user_id, ev.bot_id)
     uids = [r.uid for r in rows if r.uid and r.game_id == PRIMARY_GAME_ID]

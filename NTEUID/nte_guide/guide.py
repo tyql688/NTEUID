@@ -7,9 +7,11 @@ from pathlib import Path
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
+from gsuid_core.segment import MessageSegment
 from gsuid_core.utils.image.convert import convert_img
 
 from ..utils.msgs import GuideMsg, send_nte_notify
+from ..utils.msgs.buttons import guide_buttons
 from ..utils.name_convert import CHARS
 from ..nte_config.nte_config import NTEConfig
 from ..utils.resource.RESOURCE_PATH import GUIDE_PATH
@@ -33,7 +35,9 @@ async def get_guide(bot: Bot, ev: Event, char_name: str) -> None:
         return await send_nte_notify(bot, ev, GuideMsg.EMPTY.format(char_name=real_name))
 
     # 单作者单图时省掉「攻略作者：」文字头，直接发图。
-    await bot.send(imgs[1] if "all" not in config and len(imgs) == 2 else imgs)
+    final = imgs[1] if "all" not in config and len(imgs) == 2 else imgs
+    parts = final if isinstance(final, list) else [final]
+    await bot.send_option(parts, guide_buttons(real_name))
 
 
 async def _collect(guide_dir: Path, pattern: re.Pattern, author: str) -> list[Any]:
@@ -45,7 +49,7 @@ async def _collect(guide_dir: Path, pattern: re.Pattern, author: str) -> list[An
         if not pattern.search(file.name):
             continue
         try:
-            imgs.append(await convert_img(file))
+            imgs.append(MessageSegment.image(await convert_img(file)))
         except Exception as exc:
             logger.warning(f"[NTE攻略] 图片读取失败 {file}: {exc}")
     if imgs:

@@ -3,6 +3,15 @@ from gsuid_core.aps import scheduler
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
+from .panel_image import (
+    list_character_panel_imgs,
+    upload_character_panel_img,
+    send_character_original_img,
+    compress_character_panel_imgs,
+    delete_all_character_panel_imgs,
+    delete_character_panel_img_by_id,
+    delete_original_character_panel_img,
+)
 from .rank_service import (
     run_bot_rank,
     run_character_rank,
@@ -34,6 +43,12 @@ sv_nte_role_home = SV("nte角色面板")
 sv_nte_role_level = SV("nte角色练度")
 sv_nte_role_refresh = SV("nte刷新面板")
 sv_nte_role_detail = SV("nte角色详情")
+sv_nte_role_original = SV("nte角色原图")
+sv_nte_role_original_delete = SV("nte原图删除", pm=0)
+sv_nte_role_panel_upload = SV("nte上传角色面板图", pm=0)
+sv_nte_role_panel_delete = SV("nte删除角色面板图", pm=0)
+sv_nte_role_panel_list = SV("nte角色面板图列表", pm=0)
+sv_nte_role_panel_compress = SV("nte压缩角色面板图", pm=0)
 sv_nte_role_rank = SV("nte角色评分排名")
 sv_nte_achievement = SV("nte成就进度")
 sv_nte_realestate = SV("nte房产")
@@ -86,6 +101,53 @@ async def nte_role_detail(bot: Bot, ev: Event):
         await run_strongest_panel(bot, ev, char_name, bot_scope=ev.regex_dict.get("scope") == "bot")
     else:
         await run_character_detail(bot, ev, char_name)
+
+
+@sv_nte_role_original.on_fullmatch("原图", block=True)
+async def nte_role_original_img(bot: Bot, ev: Event):
+    await send_character_original_img(bot, ev)
+
+
+@sv_nte_role_original_delete.on_fullmatch("原图删除", block=True)
+async def nte_delete_role_original_img(bot: Bot, ev: Event):
+    await delete_original_character_panel_img(bot, ev)
+
+
+@sv_nte_role_panel_upload.on_regex(
+    rf"^上传(?P<char_name>{COMMAND_NAME_PATTERN})面板图$",
+    block=True,
+)
+async def nte_upload_role_panel_img(bot: Bot, ev: Event):
+    await upload_character_panel_img(bot, ev, ev.regex_dict["char_name"])
+
+
+@sv_nte_role_panel_delete.on_regex(
+    rf"^删除(?P<char_name>{COMMAND_NAME_PATTERN})面板图(?P<image_id>\S+)$",
+    block=True,
+)
+async def nte_delete_role_panel_img(bot: Bot, ev: Event):
+    await delete_character_panel_img_by_id(bot, ev, ev.regex_dict["char_name"], ev.regex_dict["image_id"])
+
+
+@sv_nte_role_panel_delete.on_regex(
+    rf"^删除(?P<char_name>{COMMAND_NAME_PATTERN})全部面板图$",
+    block=True,
+)
+async def nte_delete_all_role_panel_imgs(bot: Bot, ev: Event):
+    await delete_all_character_panel_imgs(bot, ev, ev.regex_dict["char_name"])
+
+
+@sv_nte_role_panel_list.on_regex(
+    rf"^(?P<char_name>{COMMAND_NAME_PATTERN})面板图列表$",
+    block=True,
+)
+async def nte_list_role_panel_imgs(bot: Bot, ev: Event):
+    await list_character_panel_imgs(bot, ev, ev.regex_dict["char_name"])
+
+
+@sv_nte_role_panel_compress.on_fullmatch("压缩面板图", block=True)
+async def nte_compress_role_panel_imgs(bot: Bot, ev: Event):
+    await compress_character_panel_imgs(bot, ev)
 
 
 @sv_nte_role_rank.on_regex(

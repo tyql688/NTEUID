@@ -5,9 +5,10 @@ from datetime import timedelta
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
-from ..utils.msgs import BindMsg, CommonMsg, send_nte_notify
+from ..utils.msgs import TITLE, BindMsg, CommonMsg, send_nte_notify
 from ..utils.database import NTEUser
 from ..utils.sdk.tajiduo import TajiduoClient
+from ..utils.msgs.buttons import switch_buttons, switched_buttons
 from ..utils.game_registry import GAME_LABELS
 from ..utils.sdk.tajiduo_model import TajiduoError
 
@@ -31,7 +32,11 @@ async def view_bindings(bot: Bot, ev: Event) -> None:
             lines.append("   · 角色信息暂未同步")
             continue
         lines += [f"   · {GAME_LABELS.get(r.game_id, r.game_id)} {r.role_name}（{r.uid}）" for r in rs]
-    await send_nte_notify(bot, ev, "\n".join(lines))
+    msg = "\n".join(lines)
+    if len(accounts) < 2:
+        await send_nte_notify(bot, ev, msg)
+    else:
+        await bot.send_option(f"{TITLE}{msg}", switch_buttons(), at_sender=bool(ev.group_id))
 
 
 async def switch_binding(bot: Bot, ev: Event, target: str) -> None:
@@ -53,7 +58,8 @@ async def switch_binding(bot: Bot, ev: Event, target: str) -> None:
             when=accounts[-1].updated_at - timedelta(seconds=1),
         )
     await NTEUser.touch_account(ev.user_id, ev.bot_id, account.center_uid)
-    await send_nte_notify(bot, ev, BindMsg.switch_done(account.center_uid, account.role_name, account.uid))
+    msg = BindMsg.switch_done(account.center_uid, account.role_name, account.uid)
+    await bot.send_option(f"{TITLE}{msg}", switched_buttons(), at_sender=bool(ev.group_id))
 
 
 async def get_laohu_tokens(bot: Bot, ev: Event) -> None:

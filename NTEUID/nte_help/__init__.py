@@ -7,13 +7,14 @@ from gsuid_core.help.utils import register_help
 
 from .get_help import ICON, get_help
 from ..nte_config.prefix import nte_prefix
+from ..utils.msgs.buttons import help_buttons
 
 sv_nte_help = SV("nte帮助")
 
 
 @sv_nte_help.on_fullmatch("帮助")
 async def send_nte_help(bot: Bot, ev: Event):
-    await bot.send_option(await get_help(ev.user_pm))
+    await bot.send_option(await get_help(ev.user_pm), help_buttons())
 
 
 register_help("NTEUID", f"{nte_prefix()}帮助", Image.open(ICON))

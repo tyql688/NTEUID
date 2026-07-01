@@ -179,7 +179,7 @@ async def draw_rank_img(
     display = [(i + 1, e, e.user_id == ev.user_id) for i, e in enumerate(entries)]
     if self_overflow is not None:
         display.append((self_overflow[0], self_overflow[1], True))
-    avatars = [await fetch_avatar(ev, e.user_id) for _, e, _ in display]
+    avatars = [await fetch_avatar(ev, e.user_id, char_id) for _, e, _ in display]
 
     overflow_gap = 34 if self_overflow is not None else 0
     height = HEADER_H + len(display) * ROW_H + max(0, len(display) - 1) * ROW_GAP + overflow_gap + 110

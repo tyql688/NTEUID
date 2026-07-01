@@ -22,6 +22,7 @@ from ..utils.constants import LAOHU_APP_ID, LAOHU_APP_KEY
 from ..utils.sdk.laohu import LaohuClient, LaohuDevice, make_device_id
 from ..utils.background import create_background_task
 from ..utils.sdk.tajiduo import TajiduoClient
+from ..utils.msgs.buttons import login_link_buttons
 from ..utils.game_registry import PRIMARY_GAME_ID, GAME_SIGN_SWITCHES
 from ..nte_config.nte_config import NTEConfig
 from ..utils.sdk.tajiduo_model import GameRoleList, TajiduoError, GameRecordCard, TajiduoSession
@@ -334,7 +335,7 @@ async def _send_login_link(bot: Bot, ev: Event, url: str) -> None:
     if forward and not private_onebot:
         await bot.send(MessageSegment.node(lines))
     else:
-        await bot.send("\n".join(lines), at_sender=at_sender)
+        await bot.send_option("\n".join(lines), login_link_buttons(url), at_sender=at_sender)
 
 
 async def request_login(bot: Bot, ev: Event) -> None:

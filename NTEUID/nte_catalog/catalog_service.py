@@ -5,9 +5,11 @@ from pathlib import Path
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
+from gsuid_core.segment import MessageSegment
 from gsuid_core.utils.image.convert import convert_img
 
 from ..utils.msgs import CatalogMsg, send_nte_notify
+from ..utils.msgs.buttons import catalog_char_buttons
 from ..utils.name_convert import alias_to_entity
 from ..utils.resource.RESOURCE_PATH import CATALOG_CHAR_PATH, CATALOG_FORK_PATH
 
@@ -30,7 +32,11 @@ async def run_catalog(bot: Bot, ev: Event, query: str) -> None:
         return await send_nte_notify(bot, ev, CatalogMsg.EMPTY.format(name=name))
 
     logger.info(f"[NTE图鉴] 发送 {reg.kind} {name} 图鉴 ({len(existing)} 张)")
-    await bot.send([await convert_img(path) for path in existing])
+    message = [MessageSegment.image(await convert_img(path)) for path in existing]
+    if reg.kind == "char":
+        await bot.send_option(message, catalog_char_buttons(name))
+    else:
+        await bot.send(message)
 
 
 async def run_catalog_list(bot: Bot, ev: Event, kind: str) -> None:

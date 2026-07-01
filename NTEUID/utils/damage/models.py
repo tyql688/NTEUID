@@ -95,8 +95,9 @@ class AbilityDamage:
 
     @property
     def rotation_expected(self) -> float:
-        """计入「一轮循环」的期望伤害：剔除情境段（下落/极限反击/瞄准）；普攻互斥连段只取最强一套，
-        但**非连段的具名输出段（分支/蓄力/具名招）照常计入一轮**（曾漏算，使普攻型角色低估 ~10-20%）。"""
+        """计入「一轮循环」的期望伤害：剔除情境段（下落/极限反击/瞄准）；多形态普攻连段（近战/远程/射弹/强力等
+        不同前缀）**各形态都计入一轮求和**（旧版取最强一套会丢掉整条形态，安魂曲近战/远程少算近半）；
+        非连段的具名输出段（分支/蓄力/具名招）同样计入一轮。"""
 
         def situational(seg: SegmentDamage) -> bool:
             return any(key in seg.name for key in _SITUATIONAL_KEYWORDS)
@@ -109,7 +110,7 @@ class AbilityDamage:
                 for key in _COMBO_KEYWORDS:
                     prefix = prefix.replace(key, "")
                 forms[prefix] = forms.get(prefix, 0.0) + seg.expected
-            best_combo = max(forms.values()) if forms else 0.0
+            best_combo = sum(forms.values())
             extra = sum(
                 seg.expected
                 for seg in self.segments
@@ -117,6 +118,22 @@ class AbilityDamage:
             )
             return best_combo + extra
         return sum(seg.expected for seg in self.segments if not situational(seg))
+
+    @property
+    def combo_form_count(self) -> int:
+        """普攻连段的不同形态数（近战/远程/强力/射弹等不同前缀）。>1 表示 rotation_expected 是多形态求和，
+        供卡片标注「Σ多形态」——这些角色的循环期望按全形态打满累加（如安魂曲近战+远程轮换）。"""
+        if self.type != "melee":
+            return 0
+        forms: set[str] = set()
+        for seg in self.segments:
+            if not any(key in seg.name for key in _COMBO_KEYWORDS):
+                continue
+            prefix = seg.name
+            for key in _COMBO_KEYWORDS:
+                prefix = prefix.replace(key, "")
+            forms.add(prefix)
+        return len(forms)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

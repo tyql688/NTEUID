@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageOps, ImageDraw
 
 from gsuid_core.logger import logger
 from gsuid_core.utils.image.convert import convert_img
 
 from .score import CharacterScore, EquipmentScore, score_character
 from .heartlike import heart_level
+from .panel_image import get_character_panel_img
 from ..utils.image import (
     COLOR_WHITE,
     COLOR_SUBTEXT,
@@ -86,6 +87,34 @@ def _badge(icon: Image.Image, size: int) -> Image.Image:
     ring = open_texture(TEX / "char_ring.png", (size, size))
     ring.alpha_composite(icon.convert("RGBA").resize((size, size), Image.Resampling.LANCZOS))
     return ring
+
+
+def _fade_mask(size: tuple[int, int], start: int, end: int, *, horizontal: bool = False) -> Image.Image:
+    gradient = Image.linear_gradient("L")
+    if horizontal:
+        gradient = gradient.rotate(90, expand=True)
+    gradient = gradient.resize(size)
+    return Image.composite(Image.new("L", size, end), Image.new("L", size, start), gradient)
+
+
+def _custom_panel_art(image: Image.Image) -> Image.Image:
+    is_landscape = image.width >= image.height
+    panel_size = (WIDTH, 948) if is_landscape else (800, 948)
+    portrait_size = (760, 948)
+
+    if is_landscape:
+        panel_img = ImageOps.fit(image, panel_size, method=Image.Resampling.LANCZOS)
+    else:
+        panel_img = Image.new("RGBA", panel_size)
+        portrait_img = ImageOps.fit(image, portrait_size, method=Image.Resampling.LANCZOS)
+        side_mask = Image.new("L", portrait_size, 255)
+        side_mask.paste(_fade_mask((220, portrait_size[1]), 255, 0, horizontal=True), (portrait_size[0] - 220, 0))
+        panel_img.alpha_composite(Image.composite(portrait_img, Image.new("RGBA", portrait_size), side_mask))
+
+    panel_mask = Image.new("L", panel_size, 255)
+    panel_mask.paste(_fade_mask((panel_size[0], 128), 128, 255), (0, 0))
+    panel_mask.paste(_fade_mask((panel_size[0], 96), 255, 0), (0, panel_size[1] - 96))
+    return Image.composite(panel_img, Image.new("RGBA", panel_size), panel_mask)
 
 
 def _grade_img(grade: str | None, size: int) -> Image.Image | None:
@@ -377,9 +406,10 @@ def _draw_damage(
             fill=COLOR_WHITE,
             anchor="lm",
         )
+        rotation_note = "  Σ多形态" if ability.combo_form_count > 1 else ""
         draw.text(
             (x1 - 20, y + 24),
-            f"Lv{ability.level}  循环期望 {ability.rotation_expected:,.0f}",
+            f"Lv{ability.level}  循环期望 {ability.rotation_expected:,.0f}{rotation_note}",
             font=nte_font_origin(22),
             fill=COLOR_WHITE,
             anchor="rm",
@@ -397,7 +427,26 @@ def _draw_damage(
         y += 12
 
 
-async def draw_character_card_img(character: CharacterDetail, role_name: str, uid: str, avatar: Image.Image) -> bytes:
+async def _draw_character_art(canvas: Image.Image, character_id: str) -> Path | None:
+    custom_art = get_character_panel_img(character_id)
+    if custom_art is not None:
+        original_img_path, custom_art_img = custom_art
+        art = _custom_panel_art(custom_art_img)
+        canvas.alpha_composite(art, (0 if art.width == WIDTH else -32, BODY_TOP - 48))
+        return original_img_path
+
+    art = await get_char_detail_img(character_id)
+    if art is not None:
+        canvas.alpha_composite(
+            art.convert("RGBA").resize((800, 948), Image.Resampling.LANCZOS),
+            (-32, BODY_TOP - 48),
+        )
+    return None
+
+
+async def draw_character_card_with_original(
+    character: CharacterDetail, role_name: str, uid: str, avatar: Image.Image
+) -> tuple[bytes, Path | None]:
     suit_items = [*character.suit.core, *character.suit.pie] if character.suit.id else []
     score = score_character(character)
     equipment_scores: tuple[EquipmentScore | None, ...] = (None,) * len(suit_items)
@@ -418,13 +467,13 @@ async def draw_character_card_img(character: CharacterDetail, role_name: str, ui
     )
 
     canvas = get_nte_bg(WIDTH, height, bg="bg3")
-    title = make_nte_role_title(avatar, role_name, uid).resize((1060, 208), Image.Resampling.LANCZOS)
+    original_img_path = await _draw_character_art(canvas, character.id)
+
+    title = make_nte_role_title(avatar, role_name, uid, char_id=character.id).resize(
+        (1060, 208), Image.Resampling.LANCZOS
+    )
     canvas.alpha_composite(title, (20, 26))
     draw = ImageDraw.Draw(canvas)
-
-    art = await get_char_detail_img(character.id)
-    if art is not None:
-        canvas.alpha_composite(art.convert("RGBA").resize((800, 948), Image.Resampling.LANCZOS), (-32, BODY_TOP - 48))
 
     x, y = 620, BODY_TOP + 8
     canvas.alpha_composite(open_texture(TEX / "base_info_bg.png"), (x, y))
@@ -474,4 +523,4 @@ async def draw_character_card_img(character: CharacterDetail, role_name: str, ui
         _draw_damage(canvas, draw, damage_top, damage, character.element_type.color)
 
     add_footer(canvas)
-    return await convert_img(canvas)
+    return await convert_img(canvas), original_img_path

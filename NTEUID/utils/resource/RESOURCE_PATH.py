@@ -73,6 +73,10 @@ TEAM_PATH = OTHER_PATH / "team"
 SIGN_CALENDAR_PATH = OTHER_PATH / "sign_calendar"
 QR_PATH = OTHER_PATH / "qr"
 
+# 自定义
+CUSTOM_PATH = MAIN_PATH / "custom"
+ROLE_PANEL_PATH = CUSTOM_PATH / "panel"
+
 
 def init_dir():
     for path in [
@@ -109,6 +113,8 @@ def init_dir():
         REALESTATE_FURNITURE_PATH,
         QR_PATH,
         ALIAS_PATH,
+        CUSTOM_PATH,
+        ROLE_PANEL_PATH,
     ]:
         path.mkdir(parents=True, exist_ok=True)
 

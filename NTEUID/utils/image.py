@@ -14,11 +14,11 @@ from gsuid_core.utils.download_resource.download_file import download
 
 from .fonts.nte_fonts import nte_font_28, nte_font_42, nte_font_44
 from ..nte_config.nte_config import NTEConfig
-from ..utils.resource.RESOURCE_PATH import QR_PATH
+from ..utils.resource.RESOURCE_PATH import QR_PATH, STATIC_RESOURCE_PATH
 
 ICON = Path(__file__).parent.parent.parent / "ICON.png"
 TEXT_PATH = Path(__file__).parent / "texture2d"
-CARD_LONG_PATH = TEXT_PATH / "card_long"
+CARD_LONG_PATH = STATIC_RESOURCE_PATH / "common" / "card_long"
 
 
 Color = tuple[int, int, int] | tuple[int, int, int, int]
@@ -334,12 +334,12 @@ def get_nte_title_bg(width: int, height: int, *, game: str = "yihuan") -> Image.
     return ImageOps.fit(image, (width, height), method=Image.Resampling.LANCZOS, centering=(0.5, 0.0))
 
 
-def _load_card_long(card_long_id: str | None = None) -> Image.Image:
-    if card_long_id:
-        path = CARD_LONG_PATH / f"{card_long_id}.png"
-    else:
-        path = random.choice(list(CARD_LONG_PATH.glob("*.png")))
-    return Image.open(path).convert("RGBA")
+def _load_card_long(char_id: str | None = None) -> Image.Image:
+    # char_id 命中 card_long/<char_id>/ 就用该角色的变体；否则全目录(顶层 + 各角色子目录)随机。
+    candidates = list((CARD_LONG_PATH / char_id).glob("*.png")) if char_id else []
+    if not candidates:
+        candidates = list(CARD_LONG_PATH.rglob("*.png"))
+    return Image.open(random.choice(candidates)).convert("RGBA")
 
 
 def make_nte_role_title(
@@ -349,7 +349,7 @@ def make_nte_role_title(
     level: int | None = None,
     *,
     frame_id: str | None = None,
-    card_long_id: str | None = None,
+    char_id: str | None = None,
 ) -> Image.Image:
     """通用 QQ 头像 + 角色名 + UID (+ 等级) title，返回 1100×216 RGBA。"""
     uid_layer = Image.open(TEXT_PATH / "uid_bg.png").convert("RGBA")
@@ -360,7 +360,7 @@ def make_nte_role_title(
     canvas = Image.new("RGBA", (1100, 216), (0, 0, 0, 0))
 
     mask = Image.open(TEXT_PATH / "maskB.png").convert("RGBA")
-    card_long = _load_card_long(card_long_id).resize((1528, 128), Image.Resampling.LANCZOS)
+    card_long = _load_card_long(char_id).resize((1528, 128), Image.Resampling.LANCZOS)
     banner_layer = Image.new("RGBA", (1100, 199), (0, 0, 0, 0))
     banner_layer.paste(card_long, (-428, 56))
     banner = Image.new("RGBA", (1100, 199), (0, 0, 0, 0))

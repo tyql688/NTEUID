@@ -79,8 +79,13 @@ _ATK_RES = (
 _CRIT_DMG_RE = re.compile(r"暴击伤害(?:提升|提高|增加)(\d+(?:\.\d+)?)%|(\d+(?:\.\d+)?)%暴击伤害(?:提升|提高|增加)")
 _CRIT_RATE_RE = re.compile(r"暴击率(?:提升|提高|增加)(\d+(?:\.\d+)?)%|(\d+(?:\.\d+)?)%暴击率(?:提升|提高|增加)")
 # 通用增伤：覆盖 造成的伤害/造成伤害(无的)/技能伤害/通用伤害/增伤/伤害加成 + (额外)?提升|提高|增加。
+# alt2 收裸引号源限定伤害「『X』(的)伤害提升Y%」(无「造成」前缀，如薄荷变轨/埃德嘉狂流)——靠紧邻
+# 闭引号 [」』] 锚定，不误吃描述句。数字前 \s* 容忍「提升 8%」这类空格(九原致命玫约)。
 # **不**含「提升至」——那是「设为X%」(becomes)非「+X%」，旧版当 +X% 会爆量高估，剔除。
-_DMG_RE = re.compile(r"(?:造成的?伤害|通用伤害|技能伤害|增伤|伤害加成)(?:额外)?(?:提升|提高|增加)(\d+(?:\.\d+)?)%")
+_DMG_RE = re.compile(
+    r"(?:造成的?伤害|通用伤害|技能伤害|增伤|伤害加成)(?:（[^）]*）)?(?:额外)?(?:提升|提高|增加)\s*(\d+(?:\.\d+)?)%"
+    r"|[」』]的?伤害(?:提升|提高)\s*(\d+(?:\.\d+)?)%"
+)
 # 元素限定增伤（X属性异能伤害提升Y%）。带元素字 → 仅施加给同元素成员（异环角色单元素，对其全段成立）。
 _ELEM_DMG_RE = re.compile(r"([光灵咒暗魂相])属性异能伤害(?:提升|提高|增加)(\d+(?:\.\d+)?)%")
 # 伤害「描述」非增益（额外伤害段 / 造成 N 次 X%攻击力的伤害）→ 不当作增益、不 surface。
@@ -104,16 +109,48 @@ def _atk_pct(sentence: str) -> float | None:
 # 用于「看着像 buff 却没解析出」的显式 surface 判定
 _BUFFY_TOKENS = ("攻击力", "暴击", "暴伤", "伤害", "增伤")
 
-# 敌人减益规则：任意句子都搜（减防 / 减抗对全队同样生效）。
+# 敌人减益规则：任意句子都搜（减防 / 减抗对全队同样生效）。双向语序——动词在前（抗性降低X%）或
+# 数值在前（降低…X%…抗性，如翳「降低其锁定目标2%的相异能属性抗性」）。
+# 填充段 stop-set 含顿号「、」：阻止跨枚举项偷数（阿德勒「攻击力降低20%、属性抗性降低10%」backward 若不挡
+# 顿号会把 20% 偷给抗性，实际应 10%）。[^，。；、] 同时卡子句和并列项。
 _ENEMY_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"防御力?(?:下降|降低|减少)(\d+(?:\.\d+)?)%"), "def_reduction"),
-    (re.compile(r"抗性(?:下降|降低|减少)(\d+(?:\.\d+)?)%"), "res_reduction"),
+    (
+        re.compile(
+            r"防御力?(?:下降|降低|减少)\s*(\d+(?:\.\d+)?)%|(?:下降|降低|减少)[^，。；、]{0,6}?(\d+(?:\.\d+)?)%[^，。；、]{0,6}防御"
+        ),
+        "def_reduction",
+    ),
+    (
+        re.compile(
+            r"抗性(?:下降|降低|减少)\s*(\d+(?:\.\d+)?)%|(?:下降|降低|减少)[^，。；、]{0,6}?(\d+(?:\.\d+)?)%[^，。；、]{0,8}抗性"
+        ),
+        "res_reduction",
+    ),
 )
 # 无视防御 / 无视抗：攻击者侧、仅装备者自身生效，且必不在出战面板里 → 当作自身增益，无需触发门控。
+# 双向 + 中间填充词（无视目标10%的防御力 / 12%无视防御效果 / 一次性消耗…12%无视防御）。顿号同样入 stop-set。
 _IGNORE_RULES: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"无视(?:敌人)?(\d+(?:\.\d+)?)%[^，。；]{0,2}防御"), "def_ignore"),
-    (re.compile(r"无视(?:敌人)?(\d+(?:\.\d+)?)%[^，。；]{0,8}抗性"), "res_ignore"),
+    (
+        re.compile(
+            r"无视[^，。；、]{0,4}?(\d+(?:\.\d+)?)%[^，。；、]{0,4}?防御|(\d+(?:\.\d+)?)%[^，。；、]{0,2}无视[^，。；、]{0,2}防御"
+        ),
+        "def_ignore",
+    ),
+    (
+        re.compile(
+            r"无视[^，。；、]{0,4}?(\d+(?:\.\d+)?)%[^，。；、]{0,8}?抗性|(\d+(?:\.\d+)?)%[^，。；、]{0,2}无视[^，。；、]{0,8}抗性"
+        ),
+        "res_ignore",
+    ),
 )
+
+
+def _first_num(match: re.Match[str]) -> float:
+    """多分支正则取第一个非空数字组（双向语序各占一组）。"""
+    for group in match.groups():
+        if group is not None:
+            return float(group)
+    return 0.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,11 +219,12 @@ def _extract_stats(sentence: str) -> list[tuple[str, float, str, str]]:
         hits.append(("crit_dmg", crit_dmg / 100.0, "", scope))
     elem = _ELEM_DMG_RE.search(sentence)
     if elem is not None:
-        hits.append(("dmg_pct", float(elem.group(2)) / 100.0, elem.group(1), ""))  # 元素限定 → 带元素字
+        # 元素限定 → 带元素字；若同时源限定（『变轨/终结』造成的X属性异能伤害）也带上 scope，否则空=全局元素增伤。
+        hits.append(("dmg_pct", float(elem.group(2)) / 100.0, elem.group(1), scope))
         return hits
     dmg = _DMG_RE.search(sentence)
     if dmg is not None:
-        hits.append(("dmg_pct", float(dmg.group(1)) / 100.0, "", scope))
+        hits.append(("dmg_pct", _first_num(dmg) / 100.0, "", scope))
     return hits
 
 
@@ -282,18 +320,19 @@ def _scan_sentence(
     stats = _extract_stats(sentence)
     matched = False
 
-    target = team if is_team else (self_buffs if is_self else None)
-    if target is not None and stats:
-        for kind, value, element, scope in stats:
-            target.append(
-                ParsedBuff(kind=kind, value=value, source=source, text=sentence, element=element, scope=scope)
-            )
+    for kind, value, element, scope in stats:
+        buff = ParsedBuff(kind=kind, value=value, source=source, text=sentence, element=element, scope=scope)
+        # 效果文案(套装/武器/觉醒/技能)的增益一律计入：实证都不在脱战面板——面板只含驱动盘词条+角色基础+自身
+        # 被动(正则都扫不到)；effect 文案 atk% 的白值反解残差=0、元素增伤面板=0，都证明没进面板。旧版「无触发词=
+        # 常驻已在面板」跳过纯属漏算（面板里的来源正则根本看不见，不存在可双计的情形）。条件型按 100% 触发计，
+        # 与引擎对所有触发型增益(释放后/暴击后…)一个口径。
+        (team if is_team else self_buffs).append(buff)
         matched = True
 
     for pattern, kind in _ENEMY_RULES:
         found = pattern.search(sentence)
         if found is not None:
-            enemy.append(EnemyDebuff(kind=kind, value=float(found.group(1)) / 100.0, source=source, text=sentence))
+            enemy.append(EnemyDebuff(kind=kind, value=_first_num(found) / 100.0, source=source, text=sentence))
             matched = True
             break
 
@@ -301,7 +340,7 @@ def _scan_sentence(
     for pattern, kind in _IGNORE_RULES:
         found = pattern.search(sentence)
         if found is not None:
-            self_buffs.append(ParsedBuff(kind=kind, value=float(found.group(1)) / 100.0, source=source, text=sentence))
+            self_buffs.append(ParsedBuff(kind=kind, value=_first_num(found) / 100.0, source=source, text=sentence))
             matched = True
             break
 
@@ -455,7 +494,10 @@ def segment_mult(buffs: Sequence[ParsedBuff], segment_name: str) -> float:
         desc_hit = len(segment_name) > len("伤害倍率") and segment_name in buff.text
         if not (core_hit or desc_hit):
             continue
-        if ("额外伤害倍率" in buff.text) == ("额外" in segment_name):  # 额外伤害段与普通段互不串扰
+        # 额外/普通互不串扰；「主动」buff 不漏到「自动」段（九原 主动「致约清算」+50% 不进 自动「致约清算」段）。
+        # 用段名前缀 自动「 判定，避免误伤翳「兽牙影刺自动攻击」这种文案里出现的「自动」二字。
+        auto_segment = segment_name.startswith("自动")
+        if ("额外伤害倍率" in buff.text) == ("额外" in segment_name) and not (auto_segment and "主动" in buff.text):
             total += buff.value
     return total
 

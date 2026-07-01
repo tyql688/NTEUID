@@ -40,18 +40,28 @@ SCOPE_TO_LABEL: dict[str, str] = {
 
 # 限定词必须「直接管辖」伤害/暴击短语才算作用域，借此区分「释放『终结』后…」这类触发语
 # （增益其实是全局的，引号只是触发条件）。
-_DMG_TAIL = r"(?:所?造成的?|的)?(?:异能)?(?:暴击伤害|暴击率|暴伤|伤害)"
+_DMG_TAIL = r"(?:所?造成的?|的)?(?:[光灵咒暗魂相]属性)?(?:异能)?(?:暴击伤害|暴击率|暴伤|伤害)"
 _QUOTE_SCOPE_RE = re.compile(r"[「『]([^」』]+)[」』]" + _DMG_TAIL)
 _KW_ALT = "|".join(sorted(KEYWORD_TO_SCOPE, key=len, reverse=True))
 _BARE_SCOPE_RE = re.compile(r"(" + _KW_ALT + r")" + _DMG_TAIL)
 _SEG_SCOPE_RE = re.compile(r"(" + "|".join(SEGMENT_KEYWORDS) + r")" + _DMG_TAIL)
 
+# 多作用域：「『普攻』和『极限反击』造成伤害+X%」——多个来源由 和/与/或/、 并列、共管同一个伤害短语。
+# 一个来源 = 引号名 或 裸来源关键词；并列组须 ≥2 个来源(含连接词)，紧贴 _DMG_TAIL，避免吃到触发语。
+_CONNECTOR = r"(?:和|与|、|及|以及|或)"
+_SOURCE = r"(?:[「『][^」』]+[」』]|" + _KW_ALT + r")"
+_MULTI_SCOPE_RE = re.compile(r"(" + _SOURCE + r"(?:" + _CONNECTOR + _SOURCE + r")+)" + _DMG_TAIL)
+_SOURCE_RE = re.compile(r"[「『]([^」』]+)[」』]|(" + _KW_ALT + r")")
+
 
 def _classify_quote(inner: str) -> str:
-    """引号内文案 → scope。含来源类型词取 type:xxx；纯技能名降级 ability:<名>（兜底子串匹配）。"""
+    """引号内文案 → scope。含来源类型词取 type:xxx；含段级词(反击/下落/分支)取 segment:；纯技能名降级 ability:<名>。"""
     for keyword in sorted(KEYWORD_TO_SCOPE, key=len, reverse=True):
         if keyword in inner:
             return KEYWORD_TO_SCOPE[keyword]
+    for segment in SEGMENT_KEYWORDS:
+        if segment in inner:
+            return f"segment:{segment}"
     name = inner.split("：")[-1].split(":")[-1].strip()
     return f"ability:{name}" if name else ""
 
@@ -59,10 +69,19 @@ def _classify_quote(inner: str) -> str:
 def extract_scope(sentence: str) -> str:
     """识别增益作用域标签。
 
-    返回："" = 全局；"type:melee|skill|ultraskill|qte" = 按 ability.type；
-    "ability:<子串>" = 按 ability.name 子串；"segment:<子串>" = 按倍率段名子串。
+    返回："" = 全局；单作用域 "type:…"/"ability:…"/"segment:…"；
+    多作用域用 "|" 连接（如 "type:skill|type:ultraskill"，scope_matches 命中任一即算）。
     仅当限定词直接管辖伤害/暴击短语时才判定作用域，规避「释放『X』后…」触发语误判为限定。
     """
+    multi = _MULTI_SCOPE_RE.search(sentence)
+    if multi is not None:
+        scopes: list[str] = []
+        for quote, bare in _SOURCE_RE.findall(multi.group(1)):
+            scope = _classify_quote(quote) if quote else KEYWORD_TO_SCOPE[bare]
+            if scope and scope not in scopes:
+                scopes.append(scope)
+        if len(scopes) >= 2:  # 真并列多作用域；只解析出 1 个则退回单作用域逻辑
+            return "|".join(scopes)
     quoted = _QUOTE_SCOPE_RE.search(sentence)
     if quoted is not None:
         return _classify_quote(quoted.group(1))
@@ -76,9 +95,12 @@ def extract_scope(sentence: str) -> str:
 
 
 def scope_matches(scope: str, ability_type: str, ability_name: str, segment_name: str) -> bool:
-    """段级匹配。ability_type / ability_name 来自资源（_AbilityProfile），绝不靠段名反推 type。"""
+    """段级匹配。ability_type / ability_name 来自资源（_AbilityProfile），绝不靠段名反推 type。
+    多作用域（"|" 连接）命中任一子作用域即算（如「普攻和极限反击」同时管 melee 段与极限反击段）。"""
     if not scope:
         return True
+    if "|" in scope:
+        return any(scope_matches(part, ability_type, ability_name, segment_name) for part in scope.split("|"))
     if scope.startswith("type:"):
         return ability_type == scope[len("type:") :]
     if scope.startswith("ability:"):

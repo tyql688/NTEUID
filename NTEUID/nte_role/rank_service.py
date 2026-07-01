@@ -4,11 +4,13 @@ import json
 
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
+from gsuid_core.segment import MessageSegment
 
 from .rank_card import RankEntry, draw_rank_img
 from ..utils.msgs import RankMsg, CharacterMsg, send_nte_notify
+from .panel_image import cache_original_image
 from ..utils.avatar import fetch_avatar
-from .character_card import draw_character_card_img
+from .character_card import draw_character_card_with_original
 from ..utils.database import NTEUser, NTECharData, NTEGroupMember
 from ..utils.name_convert import CHARS
 from .strongest_board_card import BoardEntry, draw_strongest_board_img
@@ -129,7 +131,9 @@ async def run_strongest_panel(bot: Bot, ev: Event, char_name: str, *, bot_scope:
     char = CharacterDetail.model_validate(json.loads((await NTECharData.details_for([top_uid], char_id))[top_uid]))
     user_id, role_name = (await NTEUser.identity_by_uids([top_uid]))[top_uid]
     avatar = await fetch_avatar(ev, user_id)
-    await bot.send(await draw_character_card_img(char, role_name, top_uid, avatar))
+    img, original_img_path = await draw_character_card_with_original(char, role_name, top_uid, avatar)
+    message_ids = await bot.send(MessageSegment.image(img), wait_recall=True)
+    cache_original_image(message_ids, original_img_path)
 
 
 async def run_strongest_board(bot: Bot, ev: Event, *, bot_scope: bool) -> None:

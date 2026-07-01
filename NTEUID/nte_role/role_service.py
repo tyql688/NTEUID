@@ -2,18 +2,20 @@ from __future__ import annotations
 
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
+from gsuid_core.segment import MessageSegment
 from gsuid_core.utils.image.image_tools import get_event_avatar
 
 from ..utils.at import AtTarget, resolve_at_target
 from .role_card import draw_role_card_img
 from .level_card import draw_level_img
-from ..utils.msgs import RoleMsg, CharacterMsg, send_nte_notify
+from ..utils.msgs import TITLE, RoleMsg, CharacterMsg, send_nte_notify
+from .panel_image import cache_original_image
 from .explore_card import draw_explore_img
 from .refresh_card import draw_refresh_img
 from .vehicle_card import draw_vehicle_img
 from .realtime_card import draw_realtime_img
 from ..utils.session import SessionCall
-from .character_card import draw_character_card_img
+from .character_card import draw_character_card_with_original
 from .character_sort import diff_characters, sort_characters
 from ..utils.database import NTEUser, NTEGroupMember
 from .character_cache import (
@@ -24,6 +26,12 @@ from .character_cache import (
 )
 from .realestate_card import draw_realestate_img
 from .achievement_card import draw_achievement_img
+from ..utils.msgs.buttons import (
+    login_buttons,
+    relogin_buttons,
+    role_home_buttons,
+    refresh_changed_buttons,
+)
 from ..utils.name_convert import CHARS
 from ..utils.sdk.tajiduo_model import CharacterDetail
 
@@ -60,7 +68,12 @@ async def _load_active_user(bot: Bot, ev: Event) -> tuple[NTEUser, AtTarget] | N
     user = await NTEUser.get_active(target.user_id, ev.bot_id)
     if user is None:
         has_history = await NTEUser.has_logged_in_history(target.user_id, ev.bot_id)
-        await send_nte_notify(bot, ev, RoleMsg.not_logged_in(target.is_other, has_history=has_history))
+        buttons = None if target.is_other else (relogin_buttons() if has_history else login_buttons())
+        msg = RoleMsg.not_logged_in(target.is_other, has_history=has_history)
+        if buttons is None:
+            await send_nte_notify(bot, ev, msg)
+        else:
+            await bot.send_option(f"{TITLE}{msg}", buttons, at_sender=bool(ev.group_id))
         return None
     return user, target
 
@@ -75,7 +88,8 @@ async def run_role_home(bot: Bot, ev: Event) -> None:
         user, client = session
         home = await client.get_role_home(user.uid)
         characters = await load_character_cache(user.uid)
-        await bot.send(await draw_role_card_img(ev, home, characters, user.role_name))
+        img = await draw_role_card_img(ev, home, characters, user.role_name)
+        await bot.send_option(MessageSegment.image(img), role_home_buttons())
 
 
 async def run_character_detail(bot: Bot, ev: Event, char_name: str) -> None:
@@ -101,7 +115,11 @@ async def run_character_detail(bot: Bot, ev: Event, char_name: str) -> None:
             )
         return await send_nte_notify(bot, ev, CharacterMsg.NOT_FOUND)
 
-    await bot.send(await draw_character_card_img(char, user.role_name, user.uid, await get_event_avatar(ev)))
+    img, original_img_path = await draw_character_card_with_original(
+        char, user.role_name, user.uid, await get_event_avatar(ev)
+    )
+    message_ids = await bot.send(MessageSegment.image(img), wait_recall=True)
+    cache_original_image(message_ids, original_img_path)
 
 
 async def run_character_level(bot: Bot, ev: Event) -> None:
@@ -130,7 +148,11 @@ async def run_refresh_role_panel(bot: Bot, ev: Event) -> None:
         if ev.group_id and not target.is_other:
             await NTEGroupMember.upsert_member(ev.group_id, ev.bot_id, ev.user_id, user.uid, user.role_name)
         sorted_characters = sort_characters(parsed_characters, changed_ids=changed_ids)
-        await bot.send(await draw_refresh_img(ev, user.role_name, user.uid, home, sorted_characters, len(changed_ids)))
+        img = await draw_refresh_img(ev, user.role_name, user.uid, home, sorted_characters, len(changed_ids))
+        changed_names = [
+            name for ch in sorted_characters if ch.id in changed_ids and (name := CHARS.name_by_id(ch.id)) is not None
+        ]
+        await bot.send_option(MessageSegment.image(img), refresh_changed_buttons(changed_names))
 
 
 async def run_achievement(bot: Bot, ev: Event) -> None:

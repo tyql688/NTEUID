@@ -7,7 +7,7 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
 from .sign_push import push_sign_reports
-from ..utils.msgs import SignMsg, CommonMsg, send_nte_notify
+from ..utils.msgs import TITLE, SignMsg, CommonMsg, send_nte_notify
 from .sign_runner import (
     run_all_sign,
     run_user_sign,
@@ -23,6 +23,7 @@ from ..utils.subscribe import (
     subscribe_single,
     unsubscribe_single,
 )
+from ..utils.msgs.buttons import sign_buttons
 from ..utils.game_registry import GAME_LABELS, disabled_sign_games
 from ..nte_config.nte_config import NTEConfig
 
@@ -52,7 +53,8 @@ _sign_hour, _sign_minute = _parse_sign_time()
 
 @sv_nte_sign.on_fullmatch(("签到", "日签"))
 async def nte_manual_sign(bot: Bot, ev: Event):
-    await send_nte_notify(bot, ev, await run_user_sign(ev.user_id, ev.bot_id))
+    msg = await run_user_sign(ev.user_id, ev.bot_id)
+    await bot.send_option(f"{TITLE}{msg}", sign_buttons(), at_sender=bool(ev.group_id))
 
 
 @sv_nte_sign_all.on_fullmatch("全部签到")

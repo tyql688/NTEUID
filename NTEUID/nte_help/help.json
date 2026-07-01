@@ -169,6 +169,67 @@
             }
         ]
     },
+    "面板图管理": {
+        "desc": "自定义单角色详情卡左侧面板图",
+        "data": [
+            {
+                "name": "上传角色面板图",
+                "desc": "为指定角色上传自定义面板图；之后该角色详情卡优先使用上传图",
+                "eg": "上传早雾面板图",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "角色原图",
+                "desc": "引用使用了自定义面板图的角色详情卡，发送对应上传原图",
+                "eg": "原图",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "原图删除",
+                "desc": "引用使用了自定义面板图的角色详情卡，删除对应上传原图",
+                "eg": "原图删除",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "角色面板图列表",
+                "desc": "查看指定角色已上传的面板图与图片 ID",
+                "eg": "早雾面板图列表",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "删除角色面板图",
+                "desc": "按图片 ID 删除指定角色的一张面板图",
+                "eg": "删除早雾面板图a1b2c3d4e5f6a7b8",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "删除全部角色面板图",
+                "desc": "删除指定角色的全部自定义面板图",
+                "eg": "删除早雾全部面板图",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "压缩角色面板图",
+                "desc": "重新压缩已上传的全部角色面板图",
+                "eg": "压缩面板图",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            }
+        ]
+    },
     "体力推送": {
         "desc": "当前活跃角色体力阈值提醒",
         "data": [
