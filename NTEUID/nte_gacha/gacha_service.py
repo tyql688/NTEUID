@@ -4,8 +4,9 @@ from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
 from .adapters import tjd_to_nte
+from ..utils.at import resolve_at_target
 from .gacha_card import draw_gacha_summary_img
-from ..utils.msgs import GachaMsg, CommonMsg, send_nte_notify
+from ..utils.msgs import GachaMsg, send_nte_notify
 from .tap_service import send_tap_summary, _normalize_tap_id
 from .xhh_service import send_xhh_summary_by_pkey
 from ..utils.session import SessionCall
@@ -31,12 +32,16 @@ async def _run_direct_query(bot: Bot, ev: Event, query: str) -> None:
 
 
 async def _run_tajiduo(bot: Bot, ev: Event) -> None:
+    target = await resolve_at_target(bot, ev)
+    if target is None:
+        return
     async with SessionCall(
         bot,
         ev,
         tag="抽卡记录",
-        not_logged_in_msg=CommonMsg.not_logged_in(),
-        login_expired_msg=CommonMsg.login_expired(),
+        target_user_id=target.user_id,
+        not_logged_in_msg=GachaMsg.not_logged_in(target.is_other),
+        login_expired_msg=GachaMsg.login_expired(target.is_other),
         load_failed_msg=GachaMsg.LOAD_FAILED,
     ) as session:
         if session is None:

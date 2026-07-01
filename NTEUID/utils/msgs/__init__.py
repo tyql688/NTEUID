@@ -240,6 +240,20 @@ class GachaMsg:
     XHH_PKEY_EXPIRED = "小黑盒凭据已失效，请重新获取"
 
     @classmethod
+    def not_logged_in(cls, is_other: bool = False, *, has_history: bool = False) -> str:
+        if is_other:
+            return "对方登录已失效，无法查询" if has_history else "对方尚未登录塔吉多账号"
+        if has_history:
+            return CommonMsg.login_expired()
+        return f"{CommonMsg.NOT_LOGGED_IN}，请先发送【{nte_prefix()}登录】"
+
+    @classmethod
+    def login_expired(cls, is_other: bool = False) -> str:
+        if is_other:
+            return "对方登录已失效，无法查询"
+        return CommonMsg.login_expired()
+
+    @classmethod
     def empty(cls, role_name: str) -> str:
         return f"【{role_name}】暂无抽卡数据，\n请去数据源刷新后再试"
 
