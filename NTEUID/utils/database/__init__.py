@@ -34,6 +34,7 @@ exec_list.extend(
 
 T_NTEUser = TypeVar("T_NTEUser", bound="NTEUser")
 T_NTESignRecord = TypeVar("T_NTESignRecord", bound="NTESignRecord")
+T_NTESignResignRecord = TypeVar("T_NTESignResignRecord", bound="NTESignResignRecord")
 T_NTEGroupMember = TypeVar("T_NTEGroupMember", bound="NTEGroupMember")
 T_NTECharData = TypeVar("T_NTECharData", bound="NTECharData")
 
@@ -674,6 +675,65 @@ class NTESignRecord(BaseIDModel, table=True):
         return result.rowcount
 
 
+class NTESignResignRecord(BaseIDModel, table=True):
+    """补签流水：一行 = 某塔吉多账号(center_uid) 某游戏(game_id) 某角色(uid)
+    当月某次成功补签。补签次数「每月 1 日 00:00 刷新」由服务端权威控制，
+    本地按月份字符串(YYYY-MM)聚合用于展示与兜底限流，无需手动清理。
+    """
+
+    __table_args__: dict[str, Any] = {"extend_existing": True}
+    center_uid: str = Field(default="", index=True, title="塔吉多账号center_uid")
+    game_id: str = Field(default="", index=True, title="游戏ID")
+    uid: str = Field(default="", index=True, title="角色roleId")
+    month: str = Field(default="", index=True, title="补签月份(YYYY-MM)")
+    payload: str = Field(default="", title="补签返回原文(JSON)")
+    created_at: datetime = Field(default_factory=datetime.now, title="补签时间")
+
+    @classmethod
+    @with_session
+    async def count_for_month(
+        cls: type[T_NTESignResignRecord],
+        session: AsyncSession,
+        center_uid: str,
+        game_id: str,
+        month: str,
+    ) -> int:
+        """某账号某游戏在指定月份(YYYY-MM)已成功补签的次数。"""
+        result = await session.execute(
+            select(func.count())
+            .select_from(cls)
+            .where(
+                col(cls.center_uid) == center_uid,
+                col(cls.game_id) == game_id,
+                col(cls.month) == month,
+            )
+        )
+        return int(result.scalar_one())
+
+    @classmethod
+    @with_session
+    async def record(
+        cls: type[T_NTESignResignRecord],
+        session: AsyncSession,
+        center_uid: str,
+        game_id: str,
+        uid: str,
+        month: str,
+        payload: dict | None = None,
+    ) -> None:
+        """补签成功后落一条流水；同月同账号同角色同秒不去重（服务端幂等为准）。"""
+        session.add(
+            cls(
+                center_uid=center_uid,
+                game_id=game_id,
+                uid=uid,
+                month=month,
+                payload=json.dumps(payload or {}, ensure_ascii=False),
+                created_at=datetime.now(),
+            )
+        )
+
+
 class NTEGroupMember(BaseIDModel, table=True):
     """群 × 账号 的参榜登记，给「角色评分排名」按群圈定参榜号用。一行 = (group_id, bot_id, uid)。
     某账号在群里刷新面板时 upsert，多开多号→多行。`user_id` / `role_name` 是登记当时本群语境下的
@@ -987,6 +1047,13 @@ class NTESignRecordAdmin(GsAdminModel):
     pk_name = "id"
     page_schema = PageSchema(label="异环签到记录", icon="fa fa-calendar-check")  # type: ignore
     model = NTESignRecord
+
+
+@site.register_admin
+class NTESignResignRecordAdmin(GsAdminModel):
+    pk_name = "id"
+    page_schema = PageSchema(label="异环补签记录", icon="fa fa-calendar-plus")  # type: ignore
+    model = NTESignResignRecord
 
 
 @site.register_admin

@@ -82,6 +82,92 @@ class SignMsg:
         return CommonMsg.login_expired()
 
 
+class ResignMsg:
+    """游戏签到补签（补签）相关文案。"""
+
+    FAILED = "补签失败，稍后再试"
+    ALREADY_DONE = "该角色今天已经补签过啦"
+    QUOTA_HINT = "次数/上限/余额"
+
+    @classmethod
+    def usage(cls, game_label: str) -> str:
+        p = nte_prefix()
+        return f"用法：{p}{game_label}补签 [角色ID/角色名]，例如 {p}异环补签 214075351008"
+
+    @classmethod
+    def role_not_found(cls, game_label: str) -> str:
+        return f"未找到该{game_label}角色，请检查角色ID或名称\n{cls.usage(game_label)}"
+
+    @classmethod
+    def not_signed_today(cls) -> str:
+        return f"今日尚未完成游戏签到，请先发送【{nte_prefix()}签到】完成今日签到后再补签"
+
+    @classmethod
+    def no_missed(cls) -> str:
+        return "本月签到无漏签，无需补签"
+
+    @classmethod
+    def no_quota(cls, used: int, limit: int) -> str:
+        return f"本月补签次数已用完（{used}/{limit}），每月 1 日 00:00 刷新"
+
+    @classmethod
+    def coin_not_enough(cls, cost: int) -> str:
+        return f"呗果积点不足，补签需要 {cost} 呗果积点"
+
+    @classmethod
+    def busy(cls) -> str:
+        return SignMsg.ACCOUNT_BUSY
+
+    @classmethod
+    def done(
+        cls,
+        role_name: str,
+        uid: str,
+        cost: int,
+        used: int,
+        limit: int,
+        reward: str = "",
+    ) -> str:
+        lines = [
+            f"补签成功：{role_name}（{uid}）",
+            f"已消耗 {cost} 呗果积点，领取当日签到后下一日奖励",
+        ]
+        if reward:
+            lines.append(reward)
+        remaining = max(0, limit - used)
+        lines.append(f"本月已补签 {used}/{limit} 次，剩余 {remaining} 次，每月 1 日 00:00 刷新")
+        return "\n".join(lines)
+
+    @classmethod
+    def info(
+        cls,
+        game_label: str,
+        today_sign: bool,
+        days: int,
+        day: int,
+        used: int,
+        limit: int,
+        cost: int,
+        coin: int | None = None,
+    ) -> str:
+        missed = days < day
+        lines = [
+            f"{game_label}补签信息",
+            f"今日签到：{'✅ 已签' if today_sign else '❌ 未签'}",
+            f"本月进度：累计签到 {days} 天 / 今日第 {day} 天",
+            f"补签资格：{'有漏签，可补签' if missed else '无漏签'}",
+            f"本月已补签：{used}/{limit} 次",
+            f"每次消耗：{cost} 呗果积点",
+        ]
+        if coin is not None:
+            lines.append(f"呗果余额：{coin}")
+        remaining = max(0, limit - used)
+        lines.append(f"剩余补签次数：{remaining}")
+        if not today_sign:
+            lines.append(f"💡 完成今日签到后即可补签（发送【{nte_prefix()}签到】）")
+        return "\n".join(lines)
+
+
 class RoleMsg:
     """玩家存档（roleId 维度）相关文案：主页加载、刷新、登录态等。"""
 

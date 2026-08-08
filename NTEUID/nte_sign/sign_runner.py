@@ -29,6 +29,14 @@ _account_locks: WeakValueDictionary[str, asyncio.Lock] = WeakValueDictionary()
 batch_lock = asyncio.Lock()
 
 
+def account_lock(center_uid: str) -> asyncio.Lock:
+    """按 center_uid 取账号级互斥锁（补签 / 签到共用同一把锁，防并发撞 refresh/额度）。"""
+    lock = _account_locks.get(center_uid)
+    if lock is None:
+        lock = _account_locks[center_uid] = asyncio.Lock()
+    return lock
+
+
 @dataclass(frozen=True)
 class PerUserSignReport:
     """`(user_id, bot_id)` 维度的签到汇总，给推送层按订阅清单分发。"""

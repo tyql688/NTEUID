@@ -154,6 +154,18 @@ CONFIG_DEFAULT: dict[str, GSC] = {
         "每次浏览/点赞/分享之间随机 sleep 的 [min, max]",
         [1, 3],
     ),
+    "NTESignResignLimit": GsIntConfig(
+        "每月补签上限",
+        "单个塔吉多账号每月可补签次数（服务端权威校验，本地兜底）",
+        3,
+        max_value=10,
+    ),
+    "NTESignResignCost": GsIntConfig(
+        "单次补签消耗",
+        "每次补签消耗的呗果积点数（展示用，扣费以服务端为准）",
+        200,
+        max_value=10000,
+    ),
     "NTESignBatchDelay": GsListConfig(
         "批次签到间隔（秒）",
         "自动签到多账号分批之间的 sleep 窗口 [min, max]",

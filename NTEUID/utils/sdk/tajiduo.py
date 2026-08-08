@@ -25,6 +25,7 @@ from .tajiduo_model import (
     GameRoleList,
     TajiduoError,
     GameSignState,
+    GameSignResignInfo,
     NTENoticeType,
     PostShareData,
     GameRecordCard,
@@ -56,6 +57,11 @@ TAJIDUO_DS_SALT = "pUds3dfMkl"
 TAJIDUO_DS_NONCE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 TAJIDUO_USER_AGENT = "okhttp/4.12.0"
 TAJIDUO_WEB_USER_AGENT = "Mozilla/5.0"
+
+# 游戏签到补签接口路径（来源：官方 H5 `webstatic.tajiduo.com/bbs/yh-signin/static/js/main.*.js`
+# 与线上抓包缓存实测确认：补签信息 GET /apihub/awapi/resign_info，补签执行 POST /apihub/awapi/resign）
+TAJIDUO_RESIGN_INFO_PATH = "/apihub/awapi/resign_info"
+TAJIDUO_RESIGN_PATH = "/apihub/awapi/resign"
 
 
 class _TajiduoBase(BaseSdkClient):
@@ -278,6 +284,33 @@ class TajiduoClient(_TajiduoBase):
             headers=self._authed_headers(),
         )
         return _parse(GameSignReward, _expect_dict_list(data, "游戏签到奖励格式错误"), "游戏签到奖励格式错误")
+
+    async def get_game_sign_resign_info(self, game_id: str) -> GameSignResignInfo:
+        """查询游戏补签信息：补签币余额 / 单次消耗 / 本月已补签次数 / 上限。
+        若服务端未开放该接口（404）会抛 `TajiduoError`，调用方自行降级到
+        `get_game_sign_state` + 配置常量展示。"""
+        data = await self._request(
+            TAJIDUO_RESIGN_INFO_PATH,
+            method="GET",
+            query={"gameId": game_id},
+            headers=self._authed_headers(),
+        )
+        return _parse(
+            GameSignResignInfo,
+            _expect_dict(data, "游戏补签信息格式错误"),
+            "游戏补签信息格式错误",
+        )
+
+    async def game_sign_resign(self, role_id: str, game_id: str) -> dict:
+        """单角色游戏补签：领取「当日签到后下一日」的奖励，扣除 200 呗果积点。
+        服务端负责校验今日已签 / 存在漏签 / 本月次数未超限，失败抛 `TajiduoError`。"""
+        data = await self._request(
+            TAJIDUO_RESIGN_PATH,
+            method="POST",
+            body={"roleId": role_id, "gameId": game_id},
+            headers=self._authed_headers(),
+        )
+        return _expect_dict(data, "游戏补签返回格式错误")
 
     async def get_sign_reward_records(self, game_id: str) -> list[SignRewardRecord]:
         """已领取的游戏签到奖励历史（每条一件物品）。"""

@@ -14,6 +14,7 @@ from .sign_runner import (
     run_scheduled_sign,
 )
 from .sign_calendar import run_sign_calendar
+from .resign_service import run_user_resign, run_resign_info
 from ..utils.database import NTEUser, NTESignRecord
 from ..utils.constants import GAME_ID_HUANTA, GAME_ID_YIHUAN
 from ..utils.subscribe import (
@@ -31,6 +32,8 @@ sv_nte_sign = SV("nte签到")
 sv_nte_sign_all = SV("nte全部签到", pm=1)
 sv_nte_auto = SV("nte自动签到")
 sv_nte_sign_calendar = SV("nte签到日历")
+sv_nte_resign = SV("nte补签")
+sv_nte_resign_info = SV("nte补签信息")
 
 
 def _parse_sign_time() -> tuple[int, int]:
@@ -126,6 +129,39 @@ async def nte_sign_calendar_yihuan(bot: Bot, ev: Event):
 @sv_nte_sign_calendar.on_fullmatch(("幻塔签到日历", "幻塔每日签到", "幻塔签到一览", "幻塔签到记录", "幻塔签到历史"))
 async def nte_sign_calendar_huanta(bot: Bot, ev: Event):
     await run_sign_calendar(bot, ev, GAME_ID_HUANTA)
+
+
+@sv_nte_resign.on_regex(
+    # 注意：NTEUID 强制前缀含 yh/YH/nte/NTE，用户发「yh补签」时框架会先剥掉前缀
+    # 变成「补签」，因此这里同时收「补签」；「补签信息/状态/查询」用负向断言留给只读命令
+    r"^(?:异环补签|补签)(?P<role>(?!信息|状态|查询)[\s\S]*)$",
+    block=True,
+)
+async def nte_yihuan_resign(bot: Bot, ev: Event):
+    await run_user_resign(bot, ev, GAME_ID_YIHUAN, ev.regex_dict.get("role", ""))
+
+
+@sv_nte_resign.on_regex(
+    r"^(?:幻塔补签|ht补签|HT补签|tof补签|TOF补签)(?P<role>(?!信息|状态|查询)[\s\S]*)$",
+    block=True,
+)
+async def nte_huanta_resign(bot: Bot, ev: Event):
+    await run_user_resign(bot, ev, GAME_ID_HUANTA, ev.regex_dict.get("role", ""))
+
+
+@sv_nte_resign_info.on_fullmatch(("补签信息", "补签状态", "补签查询"), block=True)
+async def nte_resign_info(bot: Bot, ev: Event):
+    await run_resign_info(bot, ev, GAME_ID_YIHUAN)
+
+
+@sv_nte_resign_info.on_fullmatch(("异环补签信息", "异环补签状态", "异环补签查询"), block=True)
+async def nte_yihuan_resign_info(bot: Bot, ev: Event):
+    await run_resign_info(bot, ev, GAME_ID_YIHUAN)
+
+
+@sv_nte_resign_info.on_fullmatch(("幻塔补签信息", "幻塔补签状态", "幻塔补签查询"), block=True)
+async def nte_huanta_resign_info(bot: Bot, ev: Event):
+    await run_resign_info(bot, ev, GAME_ID_HUANTA)
 
 
 @scheduler.scheduled_job("cron", hour=_sign_hour, minute=_sign_minute)
