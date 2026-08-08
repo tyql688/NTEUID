@@ -33,7 +33,9 @@ sv_nte_sign_all = SV("nte全部签到", pm=1)
 sv_nte_auto = SV("nte自动签到")
 sv_nte_sign_calendar = SV("nte签到日历")
 sv_nte_resign = SV("nte补签")
-sv_nte_resign_info = SV("nte补签信息")
+# 补签信息命令会与「角色详情」的 `X信息` 正则（如“娜娜莉信息”）撞词，
+# 必须提高优先级并 block，否则会被角色详情抢先匹配并误报“未找到该角色”
+sv_nte_resign_info = SV("nte补签信息", priority=1)
 
 
 def _parse_sign_time() -> tuple[int, int]:
