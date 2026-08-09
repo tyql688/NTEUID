@@ -165,14 +165,21 @@ def _draw_summary_row(
     xy: tuple[int, int],
     width: int,
     state: GameSignState,
+    resign_remaining: int = 0,
+    missed_days: int = 0,
 ) -> None:
-    """4 列统计：本月 / 累计签到 / 今日 / 可补签。直接画在烘焙暗带上，不重画底。"""
+    """5 列统计：本月 / 累计签到 / 今日 / 可补签 / 漏签。直接画在烘焙暗带上，不重画底。
+
+    `resign_remaining` 与「补签信息」命令口径一致（上限 - 已用，本地流水兜底），
+    `missed_days` 为本月漏签天数（今日未签时不计今日）。
+    """
     x, y = xy
     items = [
         (f"{state.month}月", "本月"),
         (f"{state.days}天", "累计签到"),
         ("已签" if state.today_sign else "未签", "今日"),
-        (str(state.re_sign_cnt), "可补签"),
+        (str(resign_remaining), "可补签"),
+        (str(missed_days), "漏签"),
     ]
     cell_w = width // len(items)
     cy_value = y + SUMMARY_VALUE_TOP
@@ -201,6 +208,8 @@ async def draw_sign_calendar_img(
     role_name: str,
     uid: str,
     game_id: str,
+    resign_remaining: int = 0,
+    missed_days: int = 0,
 ):
     rewards = list(rewards)
     rows = (len(rewards) + GRID_COLS - 1) // GRID_COLS
@@ -238,7 +247,14 @@ async def draw_sign_calendar_img(
 
     inner_x = PANEL_X + PANEL_PAD_X
     summary_y = panel_top + (baked_h - SUMMARY_HEIGHT) // 2
-    _draw_summary_row(draw, (inner_x, summary_y), PANEL_W - PANEL_PAD_X * 2, state)
+    _draw_summary_row(
+        draw,
+        (inner_x, summary_y),
+        PANEL_W - PANEL_PAD_X * 2,
+        state,
+        resign_remaining=resign_remaining,
+        missed_days=missed_days,
+    )
 
     grid_y = panel_top + dark_total_h + GRID_TOP_GAP
     icons = [await _load_reward_icon(reward.icon) for reward in rewards]

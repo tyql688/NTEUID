@@ -7,7 +7,7 @@ from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from ..utils.msgs import ResignMsg, send_nte_notify
+from ..utils.msgs import ResignMsg, CommonMsg, send_nte_notify
 from ..utils.session import SessionCall
 from ..utils.database import NTEUser, NTESignResignRecord
 from ..utils.game_registry import GAME_LABELS
@@ -48,8 +48,8 @@ async def run_user_resign(bot: Bot, ev: Event, game_id: str, role_query: str = "
         bot,
         ev,
         tag=TAG,
-        not_logged_in_msg=ResignMsg.usage(game_label),
-        login_expired_msg=ResignMsg.usage(game_label),
+        not_logged_in_msg=CommonMsg.not_logged_in(),
+        login_expired_msg=CommonMsg.login_expired(),
         load_failed_msg=ResignMsg.FAILED,
         game_id=game_id,
     ) as session:
@@ -142,8 +142,8 @@ async def run_resign_info(bot: Bot, ev: Event, game_id: str) -> None:
         bot,
         ev,
         tag=TAG,
-        not_logged_in_msg=ResignMsg.usage(game_label),
-        login_expired_msg=ResignMsg.usage(game_label),
+        not_logged_in_msg=CommonMsg.not_logged_in(),
+        login_expired_msg=CommonMsg.login_expired(),
         load_failed_msg=ResignMsg.FAILED,
         game_id=game_id,
     ) as session:
