@@ -14,7 +14,7 @@ from .sign_runner import (
     run_scheduled_sign,
 )
 from .sign_calendar import run_sign_calendar
-from .resign_service import run_user_resign, run_resign_info
+from .resign_service import run_resign_info, run_user_resign
 from ..utils.database import NTEUser, NTESignRecord
 from ..utils.constants import GAME_ID_HUANTA, GAME_ID_YIHUAN
 from ..utils.subscribe import (
