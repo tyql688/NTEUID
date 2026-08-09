@@ -87,7 +87,6 @@ class ResignMsg:
 
     FAILED = "补签失败，稍后再试"
     ALREADY_DONE = "该角色今天已经补签过啦"
-    QUOTA_HINT = "次数/上限/余额"
 
     @classmethod
     def usage(cls, game_label: str) -> str:
@@ -107,8 +106,8 @@ class ResignMsg:
         return "本月签到无漏签，无需补签"
 
     @classmethod
-    def no_quota(cls, used: int, limit: int) -> str:
-        return f"本月补签次数已用完（{used}/{limit}），每月 1 日 00:00 刷新"
+    def no_quota(cls) -> str:
+        return "本月补签次数已用完，每月 1 日 00:00 刷新"
 
     @classmethod
     def coin_not_enough(cls, cost: int) -> str:
@@ -124,8 +123,6 @@ class ResignMsg:
         role_name: str,
         uid: str,
         cost: int,
-        used: int,
-        limit: int,
         reward: str = "",
     ) -> str:
         lines = [
@@ -134,37 +131,6 @@ class ResignMsg:
         ]
         if reward:
             lines.append(reward)
-        remaining = max(0, limit - used)
-        lines.append(f"本月已补签 {used}/{limit} 次，剩余 {remaining} 次，每月 1 日 00:00 刷新")
-        return "\n".join(lines)
-
-    @classmethod
-    def info(
-        cls,
-        game_label: str,
-        today_sign: bool,
-        days: int,
-        day: int,
-        used: int,
-        limit: int,
-        cost: int,
-        coin: int | None = None,
-    ) -> str:
-        missed = days < day
-        lines = [
-            f"{game_label}补签信息",
-            f"今日签到：{'✅ 已签' if today_sign else '❌ 未签'}",
-            f"本月进度：累计签到 {days} 天 / 今日第 {day} 天",
-            f"补签资格：{'有漏签，可补签' if missed else '无漏签'}",
-            f"本月已补签：{used}/{limit} 次",
-            f"每次消耗：{cost} 呗果积点",
-        ]
-        if coin is not None:
-            lines.append(f"呗果余额：{coin}")
-        remaining = max(0, limit - used)
-        lines.append(f"剩余补签次数：{remaining}")
-        if not today_sign:
-            lines.append(f"💡 完成今日签到后即可补签（发送【{nte_prefix()}签到】）")
         return "\n".join(lines)
 
 

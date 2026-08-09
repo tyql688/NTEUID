@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import Any
-from datetime import datetime
 
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
@@ -10,16 +9,15 @@ from gsuid_core.models import Event
 from ..utils.msgs import CommonMsg, ResignMsg, send_nte_notify
 from .sign_runner import account_lock
 from ..utils.session import SessionCall
-from ..utils.database import NTEUser, NTESignResignRecord
+from ..utils.database import NTEUser
 from ..utils.game_registry import GAME_LABELS
-from ..nte_config.nte_config import NTEConfig
 from ..utils.sdk.tajiduo_model import TajiduoError
 
 TAG = "补签"
 
-
-def _month() -> str:
-    return datetime.now().strftime("%Y-%m")
+# 游戏固定规则：单次补签消耗 200 呗果积点。次数限制 / 余额由服务端校验，
+# 剩余次数在签到日历中展示（本地不落库、不做配置）。
+RESIGN_COST = 200
 
 
 def _resolve_role(users: list[NTEUser], query: str) -> NTEUser | None:
@@ -71,10 +69,6 @@ async def run_user_resign(bot: Bot, ev: Event, game_id: str, role_query: str = "
 
 
 async def _do_resign(bot: Bot, ev: Event, user: NTEUser, client: Any, role: NTEUser, game_id: str) -> None:
-    limit = int(NTEConfig.get_config("NTESignResignLimit").data)
-    cost = int(NTEConfig.get_config("NTESignResignCost").data)
-    month = _month()
-
     try:
         state = await client.get_game_sign_state(game_id)
     except TajiduoError as error:
@@ -86,103 +80,24 @@ async def _do_resign(bot: Bot, ev: Event, user: NTEUser, client: Any, role: NTEU
     if state.days >= state.day:
         return await send_nte_notify(bot, ev, ResignMsg.no_missed())
 
-    # 本地兜底限流：以本地流水为准（服务端 resignCnt 为已用次数，仅用于展示）
-    local_used = await NTESignResignRecord.count_for_month(user.center_uid, game_id, month)
-    if local_used >= limit:
-        return await send_nte_notify(bot, ev, ResignMsg.no_quota(local_used, limit))
-
-    # 补签信息接口（官方 H5 同款）：校验呗果余额，避免发起必然失败的请求
-    used = local_used
-    coin: int | None = None
-    try:
-        info = await client.get_game_sign_resign_info(game_id)
-        used = max(used, info.re_sign_cnt)
-        coin = info.coin
-        cost = info.cost or cost
-        limit = info.re_sign_limit or limit
-    except TajiduoError:
-        pass
-    if used >= limit:
-        return await send_nte_notify(bot, ev, ResignMsg.no_quota(used, limit))
-    if coin is not None and coin < cost:
-        return await send_nte_notify(bot, ev, ResignMsg.coin_not_enough(cost))
-
     try:
         data = await client.game_sign_resign(role.uid, game_id)
     except TajiduoError as error:
         if _already_resigned_hint(error):
             return await send_nte_notify(bot, ev, ResignMsg.ALREADY_DONE)
         if _quota_hint(error):
-            return await send_nte_notify(bot, ev, ResignMsg.no_quota(used, limit))
+            return await send_nte_notify(bot, ev, ResignMsg.no_quota())
         if "不足" in error.message:
-            return await send_nte_notify(bot, ev, ResignMsg.coin_not_enough(cost))
+            return await send_nte_notify(bot, ev, ResignMsg.coin_not_enough(RESIGN_COST))
         logger.warning(f"[NTE{TAG}] 账号 {user.center_uid} 角色 {role.uid} 补签失败: {error.message}")
         return await send_nte_notify(bot, ev, ResignMsg.FAILED)
 
-    await NTESignResignRecord.record(
-        user.center_uid,
-        game_id,
-        role.uid,
-        month,
-        payload={"roleId": role.uid, "gameId": game_id, "raw": data},
-    )
-    used = await NTESignResignRecord.count_for_month(user.center_uid, game_id, month)
     reward = _extract_reward(data)
     await send_nte_notify(
         bot,
         ev,
-        ResignMsg.done(role.role_name, role.uid, cost, used, limit, reward=reward),
+        ResignMsg.done(role.role_name, role.uid, RESIGN_COST, reward=reward),
     )
-
-
-async def run_resign_info(bot: Bot, ev: Event, game_id: str) -> None:
-    """查看本月补签信息（只读，不扣费）。"""
-    game_label = GAME_LABELS[game_id]
-    async with SessionCall(
-        bot,
-        ev,
-        tag=TAG,
-        not_logged_in_msg=CommonMsg.not_logged_in(),
-        login_expired_msg=CommonMsg.login_expired(),
-        load_failed_msg=ResignMsg.FAILED,
-        game_id=game_id,
-    ) as session:
-        if session is None:
-            return
-        user, client = session
-        state = await client.get_game_sign_state(game_id)
-        limit = int(NTEConfig.get_config("NTESignResignLimit").data)
-        cost = int(NTEConfig.get_config("NTESignResignCost").data)
-        month = _month()
-        local_used = await NTESignResignRecord.count_for_month(user.center_uid, game_id, month)
-        # 服务端 reSignCnt 语义未实测前，展示取本地与服务端较大者，防止低估已用次数
-        used = max(local_used, state.re_sign_cnt)
-
-        coin: int | None = None
-        try:
-            info = await client.get_game_sign_resign_info(game_id)
-            coin = info.coin
-            cost = info.cost or cost
-            used = max(used, info.re_sign_cnt)
-            limit = info.re_sign_limit or limit
-        except TajiduoError:
-            # 服务端未开放 resign-info 接口时静默降级，用 state + 配置展示
-            pass
-
-        await send_nte_notify(
-            bot,
-            ev,
-            ResignMsg.info(
-                game_label,
-                today_sign=state.today_sign,
-                days=state.days,
-                day=state.day,
-                used=used,
-                limit=limit,
-                cost=cost,
-                coin=coin,
-            ),
-        )
 
 
 def _already_resigned_hint(error: TajiduoError) -> bool:

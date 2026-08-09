@@ -44,10 +44,7 @@ def help_buttons() -> ButtonRows:
 
 
 def sign_buttons() -> ButtonRows:
-    return [
-        [cmd_btn("查询", "查询"), cmd_btn("签到日历", "签到日历")],
-        [cmd_btn("补签信息", "补签信息")],
-    ]
+    return [[cmd_btn("查询", "查询"), cmd_btn("签到日历", "签到日历")]]
 
 
 def switched_buttons() -> ButtonRows:
