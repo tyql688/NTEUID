@@ -178,7 +178,7 @@ def _draw_summary_row(
         (f"{state.month}月", "本月"),
         (f"{state.days}天", "累计签到"),
         ("已签" if state.today_sign else "未签", "今日"),
-        (str(resign_remaining), "可补签"),
+        (str(resign_remaining), "可补签次数"),
         (str(missed_days), "漏签"),
     ]
     cell_w = width // len(items)
