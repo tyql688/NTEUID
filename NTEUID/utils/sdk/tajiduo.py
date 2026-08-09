@@ -287,8 +287,7 @@ class TajiduoClient(_TajiduoBase):
 
     async def get_game_sign_resign_info(self, game_id: str) -> GameSignResignInfo:
         """查询游戏补签信息：补签币余额 / 单次消耗 / 本月已补签次数 / 上限。
-        若服务端未开放该接口（404）会抛 `TajiduoError`，调用方自行降级到
-        `get_game_sign_state` + 配置常量展示。"""
+        若服务端未开放该接口（404）会抛 `TajiduoError`，调用方自行降级展示。"""
         data = await self._request(
             TAJIDUO_RESIGN_INFO_PATH,
             method="GET",

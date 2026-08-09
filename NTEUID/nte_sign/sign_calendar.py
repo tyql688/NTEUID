@@ -1,35 +1,20 @@
 from __future__ import annotations
 
-import time
 import asyncio
-from datetime import datetime
 
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
 from ..utils.msgs import SignMsg, CommonMsg, send_nte_notify
 from ..utils.session import SessionCall
-from ..utils.database import NTESignResignRecord
 from .sign_calendar_card import draw_sign_calendar_img
-from ..nte_config.nte_config import NTEConfig
 from ..utils.sdk.tajiduo_model import TajiduoError
 
 TAG = "签到日历"
 
-# 签到日历图内存缓存：2 分钟内同一角色重复查询直接秒回，跳过塔吉多接口和图片渲染。
-_calendar_img_cache: dict[tuple[str, str, str], tuple[float, bytes]] = {}
-CALENDAR_IMG_TTL_SECONDS = 120
-
-
-def _calendar_cache_get(key: tuple[str, str, str]) -> bytes | None:
-    item = _calendar_img_cache.get(key)
-    if item is not None and time.time() - item[0] < CALENDAR_IMG_TTL_SECONDS:
-        return item[1]
-    return None
-
-
-def _calendar_cache_set(key: tuple[str, str, str], data: bytes) -> None:
-    _calendar_img_cache[key] = (time.time(), data)
+# 游戏固定规则：每账号每月最多 3 次补签。已用次数 / 上限由服务端「补签信息」接口
+# 权威返回（剩余 = 上限 - 已用），该常量仅作接口不可用时的兜底。
+RESIGN_MONTHLY_LIMIT = 3
 
 
 async def run_sign_calendar(bot: Bot, ev: Event, game_id: str) -> None:
@@ -45,10 +30,6 @@ async def run_sign_calendar(bot: Bot, ev: Event, game_id: str) -> None:
         if session is None:
             return
         user, client = session
-        cache_key = (user.uid, game_id, datetime.now().strftime("%Y-%m-%d"))
-        cached = _calendar_cache_get(cache_key)
-        if cached is not None:
-            return await bot.send(cached)
         state, rewards = await asyncio.gather(
             client.get_game_sign_state(game_id),
             client.get_game_sign_rewards(game_id),
@@ -56,18 +37,14 @@ async def run_sign_calendar(bot: Bot, ev: Event, game_id: str) -> None:
         if not rewards:
             return await send_nte_notify(bot, ev, SignMsg.CALENDAR_EMPTY)
 
-        # 补签统计：可补签 = 上限 - 已用（服务端权威，本地流水兜底），
-        # 与「补签信息」命令口径一致；漏签 = 今日天数 - 累计 - 今日未签时再减 1。
-        limit = int(NTEConfig.get_config("NTESignResignLimit").data)
-        used = await NTESignResignRecord.count_for_month(user.center_uid, game_id, datetime.now().strftime("%Y-%m"))
-        used = max(used, state.re_sign_cnt)
+        # 可补签次数 = 补签信息接口的「上限 - 已用」，实时查询不缓存；
+        # 接口不可用时用签到状态接口的已用次数 + 固定上限兜底。
         try:
             info = await client.get_game_sign_resign_info(game_id)
-            used = max(used, info.re_sign_cnt)
-            limit = info.re_sign_limit or limit
+            resign_remaining = max(0, info.re_sign_limit - info.re_sign_cnt)
         except TajiduoError:
-            pass
-        resign_remaining = max(0, limit - used)
+            resign_remaining = max(0, RESIGN_MONTHLY_LIMIT - state.re_sign_cnt)
+        # 漏签 = 本月总天数 - 累计签到 - 今日未签时再减 1（不计今日）。
         missed_days = max(0, state.day - state.days - (0 if state.today_sign else 1))
 
         img = await draw_sign_calendar_img(
@@ -80,5 +57,4 @@ async def run_sign_calendar(bot: Bot, ev: Event, game_id: str) -> None:
             resign_remaining=resign_remaining,
             missed_days=missed_days,
         )
-        _calendar_cache_set(cache_key, img)
         await bot.send(img)

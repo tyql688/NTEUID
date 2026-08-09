@@ -170,8 +170,8 @@ def _draw_summary_row(
 ) -> None:
     """5 列统计：本月 / 累计签到 / 今日 / 可补签 / 漏签。直接画在烘焙暗带上，不重画底。
 
-    `resign_remaining` 与「补签信息」命令口径一致（上限 - 已用，本地流水兜底），
-    `missed_days` 为本月漏签天数（今日未签时不计今日）。
+    `resign_remaining` 为服务端返回的剩余补签次数，`missed_days` 为本月漏签天数
+    （今日未签时不计今日）。
     """
     x, y = xy
     items = [
