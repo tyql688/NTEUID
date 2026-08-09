@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from datetime import datetime
 
 from gsuid_core.bot import Bot
@@ -14,6 +15,21 @@ from ..nte_config.nte_config import NTEConfig
 from .sign_calendar_card import draw_sign_calendar_img
 
 TAG = "签到日历"
+
+# 签到日历图内存缓存：2 分钟内同一角色重复查询直接秒回，跳过塔吉多接口和图片渲染。
+_calendar_img_cache: dict[tuple[str, str, str], tuple[float, bytes]] = {}
+CALENDAR_IMG_TTL_SECONDS = 120
+
+
+def _calendar_cache_get(key: tuple[str, str, str]) -> bytes | None:
+    item = _calendar_img_cache.get(key)
+    if item is not None and time.time() - item[0] < CALENDAR_IMG_TTL_SECONDS:
+        return item[1]
+    return None
+
+
+def _calendar_cache_set(key: tuple[str, str, str], data: bytes) -> None:
+    _calendar_img_cache[key] = (time.time(), data)
 
 
 async def run_sign_calendar(bot: Bot, ev: Event, game_id: str) -> None:
@@ -29,6 +45,10 @@ async def run_sign_calendar(bot: Bot, ev: Event, game_id: str) -> None:
         if session is None:
             return
         user, client = session
+        cache_key = (user.uid, game_id, datetime.now().strftime("%Y-%m-%d"))
+        cached = _calendar_cache_get(cache_key)
+        if cached is not None:
+            return await bot.send(cached)
         state, rewards = await asyncio.gather(
             client.get_game_sign_state(game_id),
             client.get_game_sign_rewards(game_id),
@@ -50,15 +70,15 @@ async def run_sign_calendar(bot: Bot, ev: Event, game_id: str) -> None:
         resign_remaining = max(0, limit - used)
         missed_days = max(0, state.day - state.days - (0 if state.today_sign else 1))
 
-        await bot.send(
-            await draw_sign_calendar_img(
-                ev,
-                state,
-                rewards,
-                user.role_name,
-                user.uid,
-                game_id,
-                resign_remaining=resign_remaining,
-                missed_days=missed_days,
-            )
+        img = await draw_sign_calendar_img(
+            ev,
+            state,
+            rewards,
+            user.role_name,
+            user.uid,
+            game_id,
+            resign_remaining=resign_remaining,
+            missed_days=missed_days,
         )
+        _calendar_cache_set(cache_key, img)
+        await bot.send(img)
