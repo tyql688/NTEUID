@@ -5,7 +5,8 @@ import asyncio
 from gsuid_core.bot import Bot
 from gsuid_core.models import Event
 
-from ..utils.msgs import SignMsg, CommonMsg, send_nte_notify
+from ..utils.at import resolve_at_target
+from ..utils.msgs import SignMsg, send_nte_notify
 from ..utils.session import SessionCall
 from .sign_calendar_card import draw_sign_calendar_img
 from ..utils.sdk.tajiduo_model import TajiduoError
@@ -18,12 +19,16 @@ RESIGN_MONTHLY_LIMIT = 3
 
 
 async def run_sign_calendar(bot: Bot, ev: Event, game_id: str) -> None:
+    target = await resolve_at_target(bot, ev)
+    if target is None:
+        return
     async with SessionCall(
         bot,
         ev,
         tag=TAG,
-        not_logged_in_msg=CommonMsg.not_logged_in(),
-        login_expired_msg=SignMsg.login_expired(),
+        target_user_id=target.user_id,
+        not_logged_in_msg=SignMsg.not_logged_in(is_other=target.is_other),
+        login_expired_msg=SignMsg.login_expired(is_other=target.is_other),
         load_failed_msg=SignMsg.CALENDAR_LOAD_FAILED,
         game_id=game_id,
     ) as session:

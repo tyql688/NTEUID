@@ -78,7 +78,15 @@ class SignMsg:
     CALENDAR_EMPTY = "暂无签到奖励数据"
 
     @classmethod
-    def login_expired(cls) -> str:
+    def not_logged_in(cls, is_other: bool = False, *, has_history: bool = False) -> str:
+        if is_other:
+            return "对方登录已失效，无法查询" if has_history else "对方尚未登录塔吉多账号"
+        return CommonMsg.not_logged_in(has_history=has_history)
+
+    @classmethod
+    def login_expired(cls, is_other: bool = False) -> str:
+        if is_other:
+            return "对方登录已失效，无法查询"
         return CommonMsg.login_expired()
 
 
