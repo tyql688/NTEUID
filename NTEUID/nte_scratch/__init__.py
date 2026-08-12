@@ -4,10 +4,10 @@ from gsuid_core.models import Event
 
 from . import login_router, query_router
 from .scratch_service import (
-    bind_scratch_cookie,
     run_scratch_rank,
     run_scratch_query,
     send_scratch_login,
+    bind_scratch_cookie,
     unbind_scratch_cookie,
 )
 

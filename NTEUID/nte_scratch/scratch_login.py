@@ -1,22 +1,22 @@
 from __future__ import annotations
 
-import hashlib
 import re
 import time
 import uuid
+import hashlib
 from base64 import b64encode
+from typing import Any
 from dataclasses import dataclass
-from typing import Any, ClassVar
 
 import httpx
 
 from gsuid_core.config import core_config
 from gsuid_core.logger import logger
 
-from ..nte_config.nte_config import NTEConfig
 from ..utils.cache import TimedCache
-from ..utils.database import NTEUser
 from ..utils.utils import get_public_ip
+from ..utils.database import NTEUser
+from ..nte_config.nte_config import NTEConfig
 
 SCRATCH_LOGIN_TTL = 600
 SCRATCH_LOGIN_CACHE: TimedCache = TimedCache(timeout=SCRATCH_LOGIN_TTL, maxsize=64)
@@ -25,8 +25,7 @@ ID_BASE = "https://id.wanmei.com"
 KF_PAGE = "https://kf.wanmei.com/selfItemFlowQuery?gameId=191"
 LOGIN_PAGE_URL = f"{ID_BASE}/login"
 USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
 _HEADERS = {
     "User-Agent": USER_AGENT,
@@ -209,8 +208,8 @@ async def _fetch_login_page(client: httpx.AsyncClient) -> tuple[str, str, str]:
 
 
 def _rsa_oaep_encrypt(public_key_pem: str, value: str) -> str:
-    from Crypto.Cipher import PKCS1_OAEP
     from Crypto.Hash import SHA1
+    from Crypto.Cipher import PKCS1_OAEP
     from Crypto.PublicKey import RSA
 
     key = RSA.import_key(public_key_pem)

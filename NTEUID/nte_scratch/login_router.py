@@ -9,18 +9,17 @@ from starlette.responses import HTMLResponse, JSONResponse
 from gsuid_core.logger import logger
 from gsuid_core.web_app import app
 
-from ..utils.database import NTEUser
-from ..utils.msgs import ScratchMsg
-from ..utils.resource.RESOURCE_PATH import NTE_TEMPLATES
 from .scratch_login import (
     SCRATCH_LOGIN_CACHE,
     ScratchLoginError,
-    close_scratch_client,
     fetch_cap_ticket,
+    send_scratch_sms,
+    close_scratch_client,
     finish_scratch_login,
     scratch_login_page_url,
-    send_scratch_sms,
 )
+from ..utils.database import NTEUser
+from ..utils.resource.RESOURCE_PATH import NTE_TEMPLATES
 
 _MOBILE_RE = re.compile(r"^1\d{10}$")
 _CODE_RE = re.compile(r"^\d{4,8}$")
@@ -172,9 +171,7 @@ async def scratch_login(payload: _LoginPayload, _request: Request) -> JSONRespon
     state.roles = roles
     if len(roles) == 1:
         role = roles[0]
-        await NTEUser.upsert_scratch_role(
-            state.user_id, state.bot_id, role["roleId"], role["roleName"], cookie
-        )
+        await NTEUser.upsert_scratch_role(state.user_id, state.bot_id, role["roleId"], role["roleName"], cookie)
         state.role_bound = True
         state.roles = None
     SCRATCH_LOGIN_CACHE.set(payload.auth, state)
@@ -195,9 +192,7 @@ async def scratch_bind_role(payload: _BindRolePayload) -> JSONResponse:
     cookie = user.wm_cookie if user is not None else ""
     if not cookie:
         return _json(False, "未找到已绑定的完美世界 Cookie，请重新登录")
-    await NTEUser.upsert_scratch_role(
-        state.user_id, state.bot_id, payload.roleId, payload.roleName, cookie
-    )
+    await NTEUser.upsert_scratch_role(state.user_id, state.bot_id, payload.roleId, payload.roleName, cookie)
     state.role_bound = True
     state.roles = None
     SCRATCH_LOGIN_CACHE.set(payload.auth, state)

@@ -113,11 +113,11 @@ class WanmeiScratchClient:
             sec_code=sec_code,
         )
         lines = [
-            f"--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"\r\n\r\n{value}\r\n"
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n{value}\r\n'
             for name, value in fields
         ]
         lines.extend(
-            f"--{boundary}\r\nContent-Disposition: form-data; name=\"{i}\"\r\n\r\n{ch}\r\n"
+            f'--{boundary}\r\nContent-Disposition: form-data; name="{i}"\r\n\r\n{ch}\r\n'
             for i, ch in enumerate(query_str)
         )
         lines.append(f"--{boundary}--\r\n")
@@ -155,8 +155,7 @@ class WanmeiScratchClient:
         }
         proxy = get_proxy_url() or None
         logger.debug(
-            f"[NTE-刮刮乐] → POST {self.SEARCH_PATH} roleId={role_id} "
-            f"{start} ~ {end} page={page_no} size={page_size}"
+            f"[NTE-刮刮乐] → POST {self.SEARCH_PATH} roleId={role_id} {start} ~ {end} page={page_no} size={page_size}"
         )
         try:
             async with httpx.AsyncClient(

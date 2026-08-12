@@ -1,28 +1,28 @@
 from __future__ import annotations
 
-import asyncio
 import re
 import time as _time
-from datetime import date, datetime, timedelta
+import asyncio
 from typing import Any
+from datetime import date, datetime, timedelta
 
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
 from ..utils.at import AtTarget, resolve_at_target
-from ..utils.cache import TimedCache
-from ..utils.database import NTEGroupMember, NTEUser
 from ..utils.msgs import ScratchMsg, send_nte_notify
+from ..utils.cache import TimedCache
 from .scratch_card import draw_scratch_card_img, draw_scratch_rank_img
 from .scratch_login import (
     SCRATCH_LOGIN_TTL,
     ScratchLoginError,
+    _kf_session_cookie,
     begin_scratch_login,
     scratch_login_page_url,
-    _kf_session_cookie,
 )
-from .wanmei_client import WanmeiCaptchaError, WanmeiError, WanmeiScratchClient
+from .wanmei_client import WanmeiError, WanmeiCaptchaError, WanmeiScratchClient
+from ..utils.database import NTEUser, NTEGroupMember
 
 TAG = "刮刮乐"
 
@@ -43,7 +43,7 @@ RESULT_CACHE: TimedCache = TimedCache(timeout=120, maxsize=64)
 _query_locks: dict[str, asyncio.Lock] = {}
 _QUERY_HISTORY: dict[str, list[float]] = {}
 QUERY_MIN_INTERVAL = 60  # 同用户两次成功查询的最小间隔（秒）
-QUERY_DAILY_LIMIT = 30   # 每用户每天成功查询上限（官方每日每类型 100 次）
+QUERY_DAILY_LIMIT = 30  # 每用户每天成功查询上限（官方每日每类型 100 次）
 
 _FANGSI_RE = re.compile(r"方斯\s*[*×xX]\s*([0-9][0-9,]*)")
 _NUMBER_RE = re.compile(r"([0-9][0-9,]*)")
@@ -212,7 +212,7 @@ async def bind_scratch_cookie(bot: Bot, ev: Event) -> None:
             match = re.search(r"wmlogon=([^;\s]+)", cookie, re.I)
             if match:
                 cookie = await _kf_session_cookie(match.group(1))
-        except ScratchLoginError as error:
+        except ScratchLoginError:
             return await send_nte_notify(bot, ev, ScratchMsg.cookie_expired())
     changed = await NTEUser.bind_wm_cookie(ev.user_id, ev.bot_id, cookie)
     if not changed:
@@ -355,9 +355,7 @@ async def _do_query(bot: Bot, ev: Event, text: str, target: AtTarget) -> None:
                     records = await _fetch_records(enriched, user.uid, segments)
                 except WanmeiError as retry_err:
                     if _cookie_invalid(retry_err):
-                        return await send_nte_notify(
-                            bot, ev, ScratchMsg.cookie_expired(is_other=target.is_other)
-                        )
+                        return await send_nte_notify(bot, ev, ScratchMsg.cookie_expired(is_other=target.is_other))
                     logger.warning(f"[{TAG}] 查询失败 user_id={target.user_id}: {retry_err.message}")
                     return await send_nte_notify(bot, ev, ScratchMsg.FAILED)
                 except WanmeiCaptchaError as captcha_err:

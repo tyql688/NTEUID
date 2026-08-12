@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import date
-from pathlib import Path
 from typing import Any
+from pathlib import Path
+from datetime import date
 
 from PIL import Image, ImageDraw
 
@@ -10,22 +10,21 @@ from gsuid_core.models import Event
 from gsuid_core.utils.image.convert import convert_img
 from gsuid_core.utils.image.image_tools import get_event_avatar
 
-from ..utils.fonts.nte_fonts import nte_font_origin
 from ..utils.image import (
-    COLOR_DARK,
+    COLOR_RED,
     COLOR_GREEN,
     COLOR_MUTED,
-    COLOR_ORANGE,
-    COLOR_RED,
     COLOR_WHITE,
+    COLOR_ORANGE,
     DEFAULT_CARD_RADIUS,
     SmoothDrawer,
+    vw,
     add_footer,
     get_nte_bg,
-    make_nte_role_title,
     open_texture,
-    vw,
+    make_nte_role_title,
 )
+from ..utils.fonts.nte_fonts import nte_font_origin
 
 WIDTH = 1180
 PAD_X = 40
@@ -34,15 +33,15 @@ RADIUS = DEFAULT_CARD_RADIUS
 TEX = Path(__file__).resolve().parent.parent / "nte_role" / "texture2d" / "character"
 
 # 角色面板风格配色（深紫黑 + 洋红描边 + 橙金强调）
-BG_PANEL = (22, 24, 38, 240)      # 深紫黑面板底
-BG_CELL = (30, 33, 50, 235)       # 单元格底
-BG_ROW_ALT = (46, 40, 60, 150)    # 明细交替行（偏紫）
+BG_PANEL = (22, 24, 38, 240)  # 深紫黑面板底
+BG_CELL = (30, 33, 50, 235)  # 单元格底
+BG_ROW_ALT = (46, 40, 60, 150)  # 明细交替行（偏紫）
 SEP_COLOR = (72, 66, 90)
-MAGENTA = (255, 78, 128)          # 洋红点缀 #FF4E80
+MAGENTA = (255, 78, 128)  # 洋红点缀 #FF4E80
 GOLD = COLOR_ORANGE
-GOLD_HI = (255, 161, 37)          # 橙金强调 #FFA125
+GOLD_HI = (255, 161, 37)  # 橙金强调 #FFA125
 GOLD_SOFT = (255, 196, 92)
-LIGHT_MUTED = (190, 184, 206)     # 浅紫灰，提升深色底可读性
+LIGHT_MUTED = (190, 184, 206)  # 浅紫灰，提升深色底可读性
 BORDER_MAGENTA = (255, 78, 128, 80)  # 卡片细洋红描边
 
 TITLE_TOP = 24
@@ -373,9 +372,19 @@ def _draw_detail(
     col_x = [x, x + 40, x + 560]
     header_font = nte_font_origin(vw(15))
     row_font = nte_font_origin(vw(15))
-    draw.text((col_x[1] + 18, table_top + DETAIL_HEADER_H // 2), "读物", font=header_font, fill=LIGHT_MUTED, anchor="lm")
-    draw.text((col_x[2] + 18, table_top + DETAIL_HEADER_H // 2), "次数", font=header_font, fill=LIGHT_MUTED, anchor="lm")
-    draw.text((x + w - 24, table_top + DETAIL_HEADER_H // 2), "总奖励（方斯）", font=header_font, fill=LIGHT_MUTED, anchor="rm")
+    draw.text(
+        (col_x[1] + 18, table_top + DETAIL_HEADER_H // 2), "读物", font=header_font, fill=LIGHT_MUTED, anchor="lm"
+    )
+    draw.text(
+        (col_x[2] + 18, table_top + DETAIL_HEADER_H // 2), "次数", font=header_font, fill=LIGHT_MUTED, anchor="lm"
+    )
+    draw.text(
+        (x + w - 24, table_top + DETAIL_HEADER_H // 2),
+        "总奖励（方斯）",
+        font=header_font,
+        fill=LIGHT_MUTED,
+        anchor="rm",
+    )
     draw.line(
         [(x + vw(14), table_top + DETAIL_HEADER_H), (x + w - vw(14), table_top + DETAIL_HEADER_H)],
         fill=SEP_COLOR,
@@ -452,17 +461,7 @@ async def draw_scratch_rank_img(
     head_h = 52
     row_h = 66
     table_bottom_pad = 22
-    total_height = (
-        20
-        + top_h
-        + 14
-        + head_h
-        + len(entries) * row_h
-        + table_bottom_pad
-        + 24
-        + 40
-        + 120
-    )
+    total_height = 20 + top_h + 14 + head_h + len(entries) * row_h + table_bottom_pad + 24 + 40 + 120
 
     canvas = get_nte_bg(RANK_W, total_height, bg="bg3").convert("RGBA")
     draw = ImageDraw.Draw(canvas)

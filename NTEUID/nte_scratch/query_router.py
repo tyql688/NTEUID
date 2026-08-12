@@ -6,8 +6,8 @@ from pathlib import Path
 from urllib.parse import quote
 
 import httpx
-from pydantic import BaseModel
 from fastapi import Request, Response
+from pydantic import BaseModel
 from fastapi.staticfiles import StaticFiles
 from starlette.responses import HTMLResponse, JSONResponse
 
@@ -17,11 +17,11 @@ from gsuid_core.logger import logger
 from gsuid_core.models import Event
 from gsuid_core.web_app import app
 
-from ..utils.database import NTEUser
 from ..utils.msgs import ScratchMsg
-from ..utils.resource.RESOURCE_PATH import NTE_TEMPLATES
 from .scratch_login import SCRATCH_LOGIN_CACHE, ScratchLoginError, fetch_kf_captcha
+from ..utils.database import NTEUser
 from .scratch_service import _record_query_done, build_scratch_report
+from ..utils.resource.RESOURCE_PATH import NTE_TEMPLATES
 
 # 验证码组件本地化：手机端无法访问完美世界 CDN 时也能加载滑块
 # 静态资产随功能代码放在 nte_scratch/static/nte_captcha（不走 resource/ 资源仓库）
@@ -40,8 +40,7 @@ except Exception:
 _NO_CACHE = {"Cache-Control": "no-store, no-cache, must-revalidate"}
 _CAPTCHA_API = "https://captchas.wanmei.com"
 _PROXY_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
 
 
@@ -112,10 +111,7 @@ async def _send_qq(state, image: bytes) -> bool:
                 break
     if bot is None:
         # 兼容不同版本的 active_bot 键名：单机器人环境直接回退到首个活跃连接
-        logger.debug(
-            f"[刮刮乐] 未按 bot_id={state.bot_id} 匹配，回退首个活跃 Bot: "
-            f"keys={list(gss.active_bot)[:5]}"
-        )
+        logger.debug(f"[刮刮乐] 未按 bot_id={state.bot_id} 匹配，回退首个活跃 Bot: keys={list(gss.active_bot)[:5]}")
         bot = next(iter(gss.active_bot.values()))
     try:
         await Bot(bot, ev).send(image)
@@ -249,9 +245,7 @@ async def scratch_mcaptcha_info(payload: _CapInfoPayload) -> JSONResponse:
         )
     data = _unwrap_jsonp(resp.text)
     if isinstance(data.get("result"), dict) and data["result"].get("img"):
-        data["result"]["img"] = "/nte/scratch/mCaptchaProxy/img?u=" + quote(
-            data["result"]["img"], safe=""
-        )
+        data["result"]["img"] = "/nte/scratch/mCaptchaProxy/img?u=" + quote(data["result"]["img"], safe="")
     return JSONResponse(data)
 
 
