@@ -17,6 +17,11 @@ def set_proxy_provider(fn: Callable[[], str] | None) -> None:
     _proxy_provider = fn
 
 
+def get_proxy_url() -> str:
+    """读取业务层注入的代理地址；未注入或为空表示直连。"""
+    return _proxy_provider() if _proxy_provider is not None else ""
+
+
 class SdkError(RuntimeError):
     def __init__(self, message: str, raw: dict[str, Any] | None = None):
         super().__init__(message)

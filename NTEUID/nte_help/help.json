@@ -486,6 +486,30 @@
                 "need_ck": false,
                 "need_sk": false,
                 "need_admin": false
+            },
+            {
+                "name": "刮刮乐",
+                "desc": "查询刮刮乐战报；首次使用会自动引导登录完美世界账号，登录后再次发送即直接查询",
+                "eg": "刮刮乐",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "刮刮乐登录",
+                "desc": "重新绑定 / 更换完美世界账号",
+                "eg": "刮刮乐登录",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
+            },
+            {
+                "name": "刮刮乐排行",
+                "desc": "查看群内刮刮乐亏损排行（仅统计塔吉多已登录账号，亏得越多排名越高）",
+                "eg": "刮刮乐排行",
+                "need_ck": false,
+                "need_sk": false,
+                "need_admin": false
             }
         ]
     },

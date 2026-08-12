@@ -121,6 +121,55 @@ class ResignMsg:
         return f"补签成功：{role_name}（{uid}）\n已消耗 {cost} 呗果积点，领取当日签到后下一日奖励"
 
 
+class ScratchMsg:
+    """刮刮乐（喵呜快报活动流水）查询相关文案。"""
+
+    FAILED = "刮刮乐查询失败，请稍后再试"
+    BUSY = "刮刮乐查询进行中，请稍候再试"
+    EMPTY = "查询范围内暂无刮刮乐记录"
+    COOKIE_EMPTY = "请粘贴完整 Cookie（需包含 wmLogon 与 SESSION）"
+    BIND_OK = "刮刮乐 Cookie 绑定成功"
+    UNBIND_OK = "已解绑刮刮乐 Cookie"
+    UNBIND_EMPTY = "尚未绑定刮刮乐 Cookie"
+
+    @classmethod
+    def usage(cls) -> str:
+        return (
+            f"用法：{nte_prefix()}刮刮乐绑定 <Cookie>（在 kf.wanmei.com 登录后，"
+            "F12 → Network → 请求头 Cookie 整段复制）\n"
+            f"{nte_prefix()}刮刮乐解绑 / {nte_prefix()}刮刮乐 [天数，默认60，最大60]"
+        )
+
+    @classmethod
+    def not_logged_in(cls, is_other: bool = False, *, has_history: bool = False) -> str:
+        if is_other:
+            return "对方尚未登录塔吉多账号"
+        return CommonMsg.not_logged_in(has_history=has_history)
+
+    @classmethod
+    def not_bound(cls, is_other: bool = False) -> str:
+        if is_other:
+            return "对方尚未绑定刮刮乐 Cookie，无法查询"
+        return f"尚未绑定完美世界账号，请先发送【{nte_prefix()}刮刮乐】按提示登录"
+
+    @classmethod
+    def other_not_bound(cls) -> str:
+        return "对方尚未绑定刮刮乐账号，无法查询，请对方先发送【刮刮乐】完成登录"
+
+    RANK_GROUP_ONLY = "亏损排行请在群内使用"
+    RANK_EMPTY = "群内暂无已查询过刮刮乐的塔吉多账号，先让大家查一次再排行吧"
+
+    @classmethod
+    def cookie_expired(cls, is_other: bool = False) -> str:
+        if is_other:
+            return "对方刮刮乐 Cookie 已失效，请其重新绑定"
+        return "刮刮乐 Cookie 已失效，请重新绑定"
+
+    @classmethod
+    def captcha_required(cls, message: str) -> str:
+        return f"官方接口需要滑块验证：{message or '请稍后再试'}"
+
+
 class RoleMsg:
     """玩家存档（roleId 维度）相关文案：主页加载、刷新、登录态等。"""
 

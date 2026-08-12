@@ -19,6 +19,12 @@ exec_list.extend(
     [
         "ALTER TABLE NTEUser ADD COLUMN tap_id TEXT DEFAULT ''",
         "ALTER TABLE NTEUser ADD COLUMN xhh_pkey TEXT DEFAULT ''",
+        "ALTER TABLE NTEUser ADD COLUMN wm_cookie TEXT DEFAULT ''",
+        # 刮刮乐战绩快照：每次查询成功后落库，供群内亏损排名使用（不依赖塔吉多也能查，排名仅统计塔吉多已登录账号）
+        "ALTER TABLE NTEUser ADD COLUMN wm_net INTEGER DEFAULT 0",
+        "ALTER TABLE NTEUser ADD COLUMN wm_cost INTEGER DEFAULT 0",
+        "ALTER TABLE NTEUser ADD COLUMN wm_gain INTEGER DEFAULT 0",
+        "ALTER TABLE NTEUser ADD COLUMN wm_updated_at TEXT DEFAULT ''",
         "CREATE INDEX IF NOT EXISTS ix_nteuser_uid ON NTEUser (uid)",
         "CREATE INDEX IF NOT EXISTS ix_nteuser_user_id ON NTEUser (user_id)",
         # 排行展示按 (char_id, uid) 批量取 detail。
@@ -71,6 +77,11 @@ class NTEUser(User, table=True):
     access_token_updated_at: datetime | None = Field(default=None, title="accessToken 更新时间")
     tap_id: str = Field(default="", title="TapTap user_id")
     xhh_pkey: str = Field(default="", title="小黑盒 user_pkey")
+    wm_cookie: str = Field(default="", title="完美世界通行证Cookie（刮刮乐查询用）")
+    wm_net: int = Field(default=0, title="刮刮乐净盈亏（方斯）")
+    wm_cost: int = Field(default=0, title="刮刮乐总投入（方斯）")
+    wm_gain: int = Field(default=0, title="刮刮乐总返还（方斯）")
+    wm_updated_at: str = Field(default="", title="刮刮乐最近查询时间")
     updated_at: datetime = Field(
         default_factory=datetime.now,
         sa_column_kwargs={"onupdate": datetime.now},
@@ -395,6 +406,168 @@ class NTEUser(User, table=True):
                 status="",
             )
         )
+
+    @classmethod
+    @with_session
+    async def bind_wm_cookie(
+        cls: type[T_NTEUser],
+        session: AsyncSession,
+        user_id: str,
+        bot_id: str,
+        cookie: str,
+    ) -> int:
+        """绑定/更新 (user_id, bot_id) 下全部行的完美世界通行证 Cookie，返回改动的行数。"""
+        result = await session.execute(
+            update(cls)
+            .where(
+                cls.user_id == user_id,
+                cls.bot_id == bot_id,
+            )
+            .values(wm_cookie=cookie)
+        )
+        return result.rowcount or 0
+
+    @classmethod
+    @with_session
+    async def unbind_wm_cookie(
+        cls: type[T_NTEUser],
+        session: AsyncSession,
+        user_id: str,
+        bot_id: str,
+    ) -> int:
+        """清空 (user_id, bot_id) 下全部行的完美世界通行证 Cookie，返回改动的行数。"""
+        result = await session.execute(
+            update(cls)
+            .where(
+                cls.user_id == user_id,
+                cls.bot_id == bot_id,
+            )
+            .values(wm_cookie="")
+        )
+        return result.rowcount or 0
+
+    @classmethod
+    @with_session
+    async def get_scratch_user(
+        cls: type[T_NTEUser],
+        session: AsyncSession,
+        user_id: str,
+        bot_id: str,
+    ) -> T_NTEUser | None:
+        """刮刮乐专用账号行：有 uid 且已绑定完美世界 Cookie。
+
+        优先返回塔吉多已登录的角色行（cookie/access_token 非空），否则返回
+        仅完美世界登录的独立行 —— 刮刮乐查询不依赖塔吉多登录。
+        """
+        result = await session.execute(
+            select(cls)
+            .where(
+                cls.user_id == user_id,
+                cls.bot_id == bot_id,
+                col(cls.uid) != "",
+                col(cls.wm_cookie) != "",
+            )
+            .order_by(
+                ((col(cls.cookie) != "") | (col(cls.access_token) != "")).desc(),
+                col(cls.updated_at).desc(),
+            )
+            .limit(1)
+        )
+        return result.scalars().first()
+
+    @classmethod
+    @with_session
+    async def upsert_scratch_role(
+        cls: type[T_NTEUser],
+        session: AsyncSession,
+        user_id: str,
+        bot_id: str,
+        uid: str,
+        role_name: str,
+        cookie: str,
+    ) -> None:
+        """无塔吉多登录时，用完美世界角色建/更新独立的刮刮乐行（uid + wm_cookie）。
+        该行 cookie/access_token 为空，NTEUI 原有查询不会命中它，互不影响。
+        """
+        result = await session.execute(
+            select(cls).where(
+                cls.user_id == user_id,
+                cls.bot_id == bot_id,
+                cls.uid == uid,
+            )
+        )
+        row = result.scalars().first()
+        now = datetime.now()
+        if row is not None:
+            row.role_name = role_name
+            row.wm_cookie = cookie
+            row.game_id = PRIMARY_GAME_ID
+            row.updated_at = now
+            return
+        session.add(
+            cls(
+                user_id=user_id,
+                bot_id=bot_id,
+                uid=uid,
+                role_name=role_name,
+                game_id=PRIMARY_GAME_ID,
+                wm_cookie=cookie,
+                cookie="",
+                access_token="",
+                updated_at=now,
+            )
+        )
+
+    @classmethod
+    @with_session
+    async def save_scratch_stats(
+        cls: type[T_NTEUser],
+        session: AsyncSession,
+        user_id: str,
+        bot_id: str,
+        uid: str,
+        net: int,
+        cost: int,
+        gain: int,
+    ) -> None:
+        """查询成功后把净盈亏等战绩快照落到 (user_id, bot_id, uid) 行。"""
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        await session.execute(
+            update(cls)
+            .where(
+                cls.user_id == user_id,
+                cls.bot_id == bot_id,
+                cls.uid == uid,
+            )
+            .values(
+                wm_net=net,
+                wm_cost=cost,
+                wm_gain=gain,
+                wm_updated_at=now,
+            )
+        )
+
+    @classmethod
+    @with_session
+    async def list_scratch_stats_by_uids(
+        cls: type[T_NTEUser],
+        session: AsyncSession,
+        bot_id: str,
+        uids: list[str],
+    ) -> list[T_NTEUser]:
+        """按角色 uid 批量取已查询过刮刮乐的行（wm_updated_at 非空）。"""
+        if not uids:
+            return []
+        result = await session.execute(
+            select(cls)
+            .where(
+                cls.bot_id == bot_id,
+                cls.uid.in_(uids),
+                col(cls.wm_updated_at) != "",
+            )
+            .order_by(col(cls.wm_updated_at).desc())
+        )
+        return list(result.scalars().all())
 
     @classmethod
     @with_session

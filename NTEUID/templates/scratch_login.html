@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>刮刮乐登录绑定</title>
+  <script src="/nte/static/captcha/captchas/c/js/jquery.js?v=2"></script>
+  <script src="/nte/static/captcha/captchas/ai/js/wanmeiCaptcha.min.js?v=2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(160deg, #101828 0%, #1e293b 100%);
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+      padding: 20px;
+    }
+    .card {
+      width: 100%;
+      max-width: 420px;
+      background: #1b2537;
+      border-radius: 18px;
+      padding: 28px 24px 24px;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+    }
+    h2 { color: #fff; font-size: 22px; margin-bottom: 6px; }
+    .tip { color: #94a3b8; font-size: 13px; line-height: 1.6; margin-bottom: 22px; }
+    .tip b { color: #f59e0b; }
+    input {
+      width: 100%;
+      height: 46px;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      background: #0f172a;
+      color: #fff;
+      font-size: 15px;
+      padding: 0 14px;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    input::placeholder { color: #64748b; }
+    #sliderImgBox { margin-bottom: 12px; }
+    button {
+      width: 100%;
+      height: 46px;
+      border: 0;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+    #sendCode { background: #334155; color: #e2e8f0; }
+    #sendCode:disabled { opacity: 0.55; cursor: not-allowed; }
+    #loginBtn { background: #f59e0b; color: #1e293b; }
+    #status { min-height: 20px; font-size: 13px; text-align: center; margin-top: 4px; }
+    #status.ok { color: #34d399; }
+    #status.err { color: #f87171; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <h2>刮刮乐登录绑定</h2>
+    <p class="tip">登录完美世界账号后，即可在 QQ 使用 <b>nte刮刮乐</b> 查询，无需复制 Cookie。</p>
+    <input id="phone" type="tel" placeholder="请输入手机号" maxlength="11">
+    <div id="sliderImgBox"></div>
+    <button id="sendCode" disabled>获取验证码</button>
+    <input id="code" type="tel" placeholder="请输入短信验证码" maxlength="8">
+    <button id="loginBtn" disabled>登录并绑定</button>
+    <p id="status"></p>
+  </div>
+
+  <script>
+    var AUTH = "{{ auth }}";
+    var state = { capTicket: "", capAppId: "20047", secCode: "", wmCaptcha: null };
+    var $id = function (id) { return document.getElementById(id); };
+
+    function show(msg, ok) {
+      var el = $id("status");
+      el.textContent = msg;
+      el.className = ok ? "ok" : "err";
+    }
+
+    async function post(path, body) {
+      try {
+        var r = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        return await r.json();
+      } catch (e) {
+        return { ok: false, msg: "网络异常，请稍后重试" };
+      }
+    }
+
+    function getSecCode() {
+      if (!state.wmCaptcha) { show("验证码组件尚未就绪，请稍候", false); return null; }
+      var code = state.wmCaptcha.getValidateResult();
+      if (!code) { show("请先完成滑块/点选验证", false); return null; }
+      return code;
+    }
+
+    function countdown(btn) {
+      var left = 60;
+      btn.disabled = true;
+      var timer = setInterval(function () {
+        left -= 1;
+        btn.textContent = left > 0 ? left + " 秒后重试" : "获取验证码";
+        if (left <= 0) { clearInterval(timer); btn.disabled = false; }
+      }, 1000);
+    }
+
+    async function init() {
+      var d = await post("/nte/scratch/capTicket", { auth: AUTH });
+      if (!d.ok) { show(d.msg || "初始化失败", false); return; }
+      state.capTicket = d.capTicket;
+      state.capAppId = d.capAppId;
+      try {
+        state.wmCaptcha = new WanmeiCaptcha({ containerId: "sliderImgBox" });
+        state.wmCaptcha.init({
+          appId: state.capAppId,
+          capTicket: state.capTicket,
+          capStyle: "popup",
+          bindBtn: "",
+          onRefresh: function () { state.secCode = ""; }
+        });
+        $id("sendCode").disabled = false;
+        $id("loginBtn").disabled = false;
+      } catch (e) {
+        show("验证码组件加载失败，请刷新页面", false);
+      }
+    }
+
+    $id("sendCode").onclick = async function () {
+      var sec = getSecCode();
+      if (!sec) return;
+      var phone = $id("phone").value.trim();
+      if (!/^1\d{10}$/.test(phone)) { show("手机号格式错误", false); return; }
+      var btn = $id("sendCode");
+      btn.disabled = true;
+      var d = await post("/nte/scratch/sendSmsCode", {
+        auth: AUTH, phone: phone, capTicket: state.capTicket, secCode: sec
+      });
+      show(d.msg || d.error, d.ok);
+      if (d.ok) countdown(btn); else btn.disabled = false;
+    };
+
+    $id("loginBtn").onclick = async function () {
+      var sec = getSecCode();
+      if (!sec) return;
+      var phone = $id("phone").value.trim();
+      var code = $id("code").value.trim();
+      if (!/^1\d{10}$/.test(phone)) { show("手机号格式错误", false); return; }
+      if (!/^\d{4,8}$/.test(code)) { show("验证码格式错误", false); return; }
+      $id("loginBtn").disabled = true;
+      var d = await post("/nte/scratch/login", {
+        auth: AUTH, phone: phone, code: code,
+        capTicket: state.capTicket, secCode: sec
+      });
+      if (d.ok) {
+        if (d.roles && d.roles.length > 1) {
+          var btns = d.roles.map(function (r) {
+            return '<button data-role="' + r.roleId + '" data-name="' + r.roleName +
+              '" style="background:#334155;color:#e2e8f0;margin-bottom:8px;">' +
+              r.roleName + '（' + r.roleId + '）</button>';
+          }).join("");
+          $id("card").innerHTML =
+            '<h2>✅ 登录成功</h2>' +
+            '<p class="tip">该账号下有多个异环角色，请选择要查询刮刮乐的角色：</p>' +
+            btns + '<p id="status"></p>';
+          document.querySelectorAll("[data-role]").forEach(function (b) {
+            b.onclick = async function () {
+              var r = await post("/nte/scratch/bindRole", {
+                auth: AUTH, roleId: b.dataset.role, roleName: b.dataset.name
+              });
+              var st = $id("status");
+              if (st) st.textContent = r.msg || r.error;
+              if (r.ok && r.queryUrl) location.href = r.queryUrl;
+            };
+          });
+        } else {
+          $id("card").innerHTML =
+            '<h2>✅ 登录成功</h2>' +
+            '<p class="tip">完美世界账号已绑定，无需复制 Cookie。</p>' +
+            '<a href="/nte/scratch/query/' + AUTH + '" style="display:block;text-decoration:none;">' +
+            '<button style="background:#f59e0b;color:#1e293b;">开始查询（默认最近 60 天）</button></a>' +
+            '<p class="tip">点击后完成一次滑块验证，战报会自动发到你的 QQ。</p>';
+        }
+      } else {
+        show(d.msg || d.error, false);
+        $id("loginBtn").disabled = false;
+      }
+    };
+
+    init();
+  </script>
+</body>
+</html>
