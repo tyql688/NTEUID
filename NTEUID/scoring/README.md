@@ -55,16 +55,16 @@ from ....utils.sdk.tajiduo_model import CharacterDetail, CharacterProperty
 @dataclass(frozen=True, slots=True, kw_only=True)
 class _Item:
     item_id: str
-    display: str        # 装备卡上的分数文本,格式随意,建议 ≤8 个全角字符
-    grade: str | None   # 单件评级;None 就不画徽章
+    display: str  # 装备卡上的分数文本,格式随意,建议 ≤8 个全角字符
+    grade: str | None  # 单件评级;None 就不画徽章
     unlocked_subs: int  # 已解锁副词条数,游戏规则是 lev // 5
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class _Result:
-    score: float        # 总分,原样入库、排序并显示在榜单;可带小数,整数也可直接返回
-    display: str        # 角色卡上的总分文本,格式随意:"87分"、"毕业度92.5%"
-    grade: str          # 总评级,必须出自 grades() 词表
+    score: float  # 总分,原样入库、排序并显示在榜单;可带小数,整数也可直接返回
+    display: str  # 角色卡上的总分文本,格式随意:"87分"、"毕业度92.5%"
+    grade: str  # 总评级,必须出自 grades() 词表
     equipment: tuple[_Item, ...]
 
     # 三个判定驱动角色卡的词条高亮;不想区分就全 False,卡片全白,不报错
@@ -140,6 +140,7 @@ from functools import lru_cache
 
 _DATA = Path(__file__).parent / "data"
 
+
 # 写法一:所有角色一个 JSON({char_id: {...}}),prepare 时整个载入
 class SingleJsonScorer(BaseScorer):
     def __init__(self) -> None:
@@ -157,6 +158,8 @@ class SingleJsonScorer(BaseScorer):
 def _plan(char_id: str) -> dict | None:
     path = _DATA / "chars" / f"{char_id}.json"
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
 # 记得 close() 里 _plan.cache_clear()
 ```
 
