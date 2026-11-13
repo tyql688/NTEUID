@@ -38,10 +38,10 @@ def _find_gap(image_bytes: bytes, order: list[int]) -> tuple[int, float]:
             (target_x, target_y),
         )
 
-    piece_alpha = image.crop((260, 0, 321, 120)).getchannel("A").load()
-    gray = base.convert("L").load()
-    assert piece_alpha is not None and gray is not None
-    shape = {(x, y) for x in range(61) for y in range(120) if piece_alpha[x, y] > 128}
+    piece = image.crop((260, 0, 321, 120)).getchannel("A")
+    alpha = piece.tobytes()
+    gray = base.convert("L").tobytes()
+    shape = {(x, y) for x in range(piece.width) for y in range(piece.height) if alpha[y * piece.width + x] > 128}
     ring: set[tuple[int, int]] = set()
     for x, y in shape:
         for delta_x in range(-3, 4):
@@ -53,8 +53,8 @@ def _find_gap(image_bytes: bytes, order: list[int]) -> tuple[int, float]:
     best_x = 0
     best_score = -math.inf
     for offset in range(200):
-        inside = sum(gray[offset + x, y] for x, y in shape) / len(shape)
-        outside = sum(gray[offset + x, y] for x, y in ring) / len(ring)
+        inside = sum(gray[y * base.width + offset + x] for x, y in shape) / len(shape)
+        outside = sum(gray[y * base.width + offset + x] for x, y in ring) / len(ring)
         score = (outside - inside) * max(outside - 150, 1)
         if score > best_score:
             best_x = offset

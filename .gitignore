@@ -4,4 +4,6 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 NTEUID/resource/
+NTEUID/.nte-resource-update/
+NTEUID/resource.backup-*/
 NTEUID/scoring/scorers/

@@ -10,5 +10,6 @@ authors = [{name = "tyql88"}]
 readme = "README.md"
 requires-python = ">=3.11, <4.0"
 dependencies = [
+    "filelock>=3.13",
     "pycryptodome>=3.20.0",
 ]
