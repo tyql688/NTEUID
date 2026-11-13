@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import time
 import shutil
 import hashlib
 from typing import TypedDict
@@ -53,9 +54,20 @@ def _manifest(client: httpx.Client, local: bytes, force: bool) -> tuple[Manifest
 
 
 def _download(client: httpx.Client, url: str, target: Path, digest: Digest) -> None:
-    with client.stream("GET", url) as response:
-        response.raise_for_status()
-        write_verified(target, response.iter_bytes(1024 * 1024), digest)
+    # cnb 对 /-/git/raw 限流约 10 次/3 秒，撞上 429 时按 x-ratelimit-reset 退避后重试
+    for attempt in range(5):
+        with client.stream("GET", url) as response:
+            if response.status_code == 429 and attempt < 4:
+                reset = response.headers.get("x-ratelimit-reset", "3").removesuffix("s")
+                try:
+                    delay = min(float(reset) + 0.5, 15)
+                except ValueError:
+                    delay = 3.5
+                time.sleep(delay)
+                continue
+            response.raise_for_status()
+            write_verified(target, response.iter_bytes(1024 * 1024), digest)
+            return
 
 
 def _discard(path: Path) -> None:
