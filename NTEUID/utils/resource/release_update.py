@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+import sys
+import stat
 import time
 import shutil
 import hashlib
@@ -12,6 +14,7 @@ from urllib.parse import quote
 import httpx
 from filelock import FileLock
 from pydantic import Field, BaseModel
+from tenacity import retry, wait_fixed, stop_after_delay, retry_if_exception
 
 from .release_files import RECEIPT, Digest, Manifest, write_verified
 
@@ -70,11 +73,38 @@ def _download(client: httpx.Client, url: str, target: Path, digest: Digest) -> N
             return
 
 
-def _discard(path: Path) -> None:
-    if path.is_symlink() or not path.is_dir():
+def _is_link(path: Path) -> bool:
+    if sys.platform == "win32" and os.path.lexists(path):
+        return bool(path.lstat().st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+    return path.is_symlink()
+
+
+def _remove_tree(path: Path) -> None:
+    if sys.platform == "win32" and os.path.lexists(path):
+        attributes = path.lstat().st_file_attributes
+        linked = attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        if not linked and attributes & stat.FILE_ATTRIBUTE_READONLY:
+            path.chmod(stat.S_IWRITE)
+        if attributes & stat.FILE_ATTRIBUTE_DIRECTORY:
+            if not linked:
+                for child in path.iterdir():
+                    _remove_tree(child)
+            path.rmdir()
+        else:
+            path.unlink()
+    elif path.is_symlink() or not path.is_dir():
         path.unlink(missing_ok=True)
     else:
         shutil.rmtree(path)
+
+
+def _windows_file_in_use(error: BaseException) -> bool:
+    return sys.platform == "win32" and isinstance(error, OSError) and error.winerror in (5, 32, 33, 145)
+
+
+@retry(retry=retry_if_exception(_windows_file_in_use), wait=wait_fixed(1), stop=stop_after_delay(15), reraise=True)
+def _discard(path: Path) -> None:
+    _remove_tree(path)
 
 
 def _prepare(
@@ -97,20 +127,22 @@ def _prepare(
 
 def sync_release(root: Path, *, force: bool = False, local_zip: Path | None = None) -> ResourceUpdateResult:
     work = root.with_name(".nte-resource-update")
-    if root.is_symlink() or work.is_symlink() or (work / "update.lock").is_symlink():
+    if any(_is_link(path) for path in (root, work, work / "update.lock")):
         raise ValueError("资源更新目录包含外部链接")
     work.mkdir(exist_ok=True)
     previous, staged, download = work / "previous", work / "next", work / "resources.zip"
     with FileLock(work / "update.lock", timeout=0), httpx.Client(follow_redirects=True, timeout=60) as client:
-        if previous.is_dir() and not previous.is_symlink() and not (root / RECEIPT).is_file():
+        receipt = root / RECEIPT
+        leftover = previous.is_dir() and not _is_link(previous)
+        if leftover and (_is_link(receipt) or not receipt.is_file()):
             _discard(root)
             previous.rename(root)
+            leftover = False
         for path in (previous, staged, download, work / "owner"):
             _discard(path)
         root.mkdir(exist_ok=True)
 
-        receipt = root / RECEIPT
-        local = receipt.read_bytes() if not receipt.is_symlink() and receipt.is_file() else b""
+        local = receipt.read_bytes() if not _is_link(receipt) and receipt.is_file() else b""
         manifest, raw = _manifest(client, local, force)
 
         existing: set[str] = set()
@@ -119,7 +151,7 @@ def sync_release(root: Path, *, force: bool = False, local_zip: Path | None = No
             base = Path(parent)
             for name in dirs.copy():
                 path = base / name
-                if path.is_symlink() or name == ".git":
+                if _is_link(path) or name == ".git":
                     dirs.remove(name)
                     files.append(name)
                 else:
@@ -136,7 +168,13 @@ def sync_release(root: Path, *, force: bool = False, local_zip: Path | None = No
             if raw != local:
                 staged.write_bytes(raw)
                 staged.replace(receipt)
-            return {"success": True, "message": "已是最新", "files_changed": 0, "changed": False}
+            # 上次可能在切换资源后卡在删除。回收成功后通知上层加载已切换的版本。
+            return {
+                "success": True,
+                "message": "旧资源已删除" if leftover else "已是最新",
+                "files_changed": 0,
+                "changed": leftover,
+            }
 
         # 下载和校验完成后切换整棵目录。中断在两次重命名之间时，下次从 previous 恢复。
         staged.mkdir()
@@ -159,7 +197,7 @@ def sync_release(root: Path, *, force: bool = False, local_zip: Path | None = No
             _discard(previous)
         finally:
             _discard(staged)
-            download.unlink(missing_ok=True)
+            _discard(download)
         count = len(needed) + len(extras)
         return {
             "success": True,

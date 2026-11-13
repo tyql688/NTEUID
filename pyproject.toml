@@ -12,4 +12,5 @@ requires-python = ">=3.11, <4.0"
 dependencies = [
     "filelock>=3.13",
     "pycryptodome>=3.20.0",
+    "tenacity>=9.1",
 ]
