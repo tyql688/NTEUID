@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from typing import Literal
-
 from gsuid_core.bot import Bot
 from gsuid_core.logger import logger
 from gsuid_core.models import Event
 
-from .adapters import tap_to_nte
+from .adapters import archive_to_nte, tap_to_archive
 from .gacha_card import draw_gacha_summary_img
 from ..utils.msgs import GachaMsg, send_nte_notify
+from .gacha_history import NTEGachaHistory
 from ..utils.sdk.base import SdkError
 from ..utils.sdk.taptap import taptap
-
-TapSummaryResult = Literal["sent", "not_bound", "failed", "empty"]
+from ..utils.sdk.taptap_model import TaptapError
 
 
 async def send_tap_summary(
@@ -20,32 +18,36 @@ async def send_tap_summary(
     ev: Event,
     *,
     tap_id: int,
-) -> TapSummaryResult:
-    """直查 TapTap user_id → 渲染抽卡卡。不需要先在 NTEUID 内绑定。"""
+    history: NTEGachaHistory,
+) -> None:
+    """按 TapTap 返回的游戏 UID 合并本地记录并生成抽卡图片。"""
     try:
         binding = await taptap.check_binding(tap_id)
     except SdkError as err:
         logger.warning(f"[NTE抽卡] TapTap 查询失败 user_id={ev.user_id} tap_id={tap_id} err={err.message}")
-        await send_nte_notify(bot, ev, GachaMsg.LOAD_FAILED)
-        return "failed"
+        return await send_nte_notify(bot, ev, GachaMsg.LOAD_FAILED)
     if not binding.is_bind:
-        await send_nte_notify(bot, ev, GachaMsg.TAPTAP_NOT_BOUND)
-        return "not_bound"
+        return await send_nte_notify(bot, ev, GachaMsg.TAPTAP_NOT_BOUND)
 
     try:
         tap_summary = await taptap.gacha_summary(tap_id)
     except SdkError as err:
         logger.warning(f"[NTE抽卡] TapTap 抽卡总览失败 user_id={ev.user_id} tap_id={tap_id} err={err.message}")
-        await send_nte_notify(bot, ev, GachaMsg.LOAD_FAILED)
-        return "failed"
-    summary = tap_to_nte(tap_summary)
-    if summary.is_empty:
-        await send_nte_notify(bot, ev, GachaMsg.empty(binding.name))
-        return "empty"
+        return await send_nte_notify(bot, ev, GachaMsg.LOAD_FAILED)
 
-    img = await draw_gacha_summary_img(ev, summary, role_name=binding.name, role_id=binding.role_id)
+    try:
+        snapshot = tap_to_archive(binding.role_id, tap_summary)
+    except TaptapError as err:
+        logger.warning(f"[NTE抽卡] TapTap 记录转换失败: {err.message}")
+        return await send_nte_notify(bot, ev, GachaMsg.TAPTAP_IMPORT_FAILED)
+
+    archive = await history.merge(snapshot)
+    summary = archive_to_nte(archive)
+    if summary.is_empty:
+        return await send_nte_notify(bot, ev, GachaMsg.empty(binding.name))
+
+    img = await draw_gacha_summary_img(ev, summary, role_name=binding.name, role_id=archive.uid)
     await bot.send(img)
-    return "sent"
 
 
 def _normalize_tap_id(arg: str) -> int | None:

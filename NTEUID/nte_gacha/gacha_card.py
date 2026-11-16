@@ -82,7 +82,7 @@ def _rating_mood_path(total: int, ssr: int) -> Path:
     return path if index >= 0 and path.exists() else _MOOD_TEX / "default.png"
 
 
-def _draw_title_stats(canvas: Image.Image, title_y: int, total: int, ssr: int, luck_title: str = "") -> None:
+def _draw_title_stats(canvas: Image.Image, title_y: int, total: int, ssr: int) -> None:
     right = _PAGE_W - 21 - 75
     mid = title_y + 108 + 30
     draw = ImageDraw.Draw(canvas)
@@ -94,8 +94,7 @@ def _draw_title_stats(canvas: Image.Image, title_y: int, total: int, ssr: int, l
     draw.text(
         (right - unit_w - 6, row1_b), str(total), font=f_num, fill=_WHITE, anchor="rb", stroke_width=2, stroke_fill=sk
     )
-    # 有上游官方称号优先用（如小黑盒「宇宙级至尊欧皇」），否则本地推算等级
-    tier_text = _truncate(draw, luck_title or _rating(total, ssr), f_tier, 280)
+    tier_text = _truncate(draw, _rating(total, ssr), f_tier, 280)
     draw.text((right, mid + 12), tier_text, font=f_tier, fill=_WHITE, anchor="rt", stroke_width=2, stroke_fill=sk)
 
 
@@ -113,12 +112,6 @@ def _format_date(ts: int) -> str:
 
 
 def _section_subtitle(section: NTEGachaSection) -> str:
-    if section.begin_time_ts and section.end_time_ts:
-        return f"{_format_date(section.begin_time_ts)} ~ {_format_date(section.end_time_ts)}"
-    if section.begin_time_ts:
-        return f"开始 {_format_date(section.begin_time_ts)}"
-    if section.end_time_ts:
-        return f"截至 {_format_date(section.end_time_ts)}"
     pull_times = [item.pull_time_ts for item in section.items if item.pull_time_ts > 0]
     if pull_times:
         return f"{_format_date(min(pull_times))} ~ {_format_date(max(pull_times))}"
@@ -276,7 +269,7 @@ async def draw_gacha_summary_img(
 
     o = summary.overview
     assert o is not None  # 调用方已用 summary.is_empty 过滤
-    _draw_title_stats(canvas, _TITLE_Y, o.total_pull_count, o.total_ssr_count, summary.luck_title)
+    _draw_title_stats(canvas, _TITLE_Y, o.total_pull_count, o.total_ssr_count)
 
     cursor = _TITLE_Y + _TITLE_H + _TITLE_SECTION_GAP
     for idx, section in enumerate(sections):

@@ -22,8 +22,6 @@ class NTEGachaItem(_NteGachaModel):
 class NTEGachaSection(_NteGachaModel):
     banner_name: str = Field(description="池子展示名")
     banner_type: str = Field(default="", description="池子类型")
-    begin_time_ts: int = Field(default=0, description="池子起始时间戳；0 表示来源未提供")
-    end_time_ts: int = Field(default=0, description="池子结束时间戳；0 表示来源未提供")
     total_pull_count: int = Field(description="本池累计抽数")
     ssr_count: int = Field(description="本池 S 命中次数")
     avg_pity: int = Field(description="本池平均出 S 抽数")
@@ -37,7 +35,6 @@ class NTEGachaSummary(_NteGachaModel):
     )
     sections: list[NTEGachaSection] = Field(default_factory=list)
     last_updated_ts: int = Field(default=0, description="数据更新时间戳")
-    luck_title: str = Field(default="", description="欧气称号（如「宇宙级至尊欧皇」，仅小黑盒提供）")
 
     @property
     def is_empty(self) -> bool:

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field, BaseModel, ConfigDict
+from pydantic import Field, BaseModel, ConfigDict, model_validator
 
 PoolType = Literal["limited", "permanent", "weapon"]
 POOL_NAMES: dict[PoolType, str] = {
@@ -17,13 +17,24 @@ class _ArchiveModel(BaseModel):
 
 
 class NTEGachaRecord(_ArchiveModel):
-    item_id: str = Field(min_length=1)
+    item_id: str = Field(pattern=r"^(?:[0-9]+|fork_[a-z0-9_]+)$")
     time_ms: int = Field(gt=0)
     pity: int = Field(ge=1)
+    time_precision: Literal["ms", "s"] = "ms"
+
+    @model_validator(mode="after")
+    def _validate_time_precision(self) -> NTEGachaRecord:
+        if self.time_precision == "s" and self.time_ms % 1000:
+            raise ValueError("秒精度记录的 time_ms 必须是 1000 的整数倍")
+        return self
 
     @property
     def key(self) -> tuple[str, int, int]:
         return self.item_id, self.time_ms, self.pity
+
+    @property
+    def second_key(self) -> tuple[str, int, int]:
+        return self.item_id, self.time_ms // 1000, self.pity
 
 
 class NTEGachaPool(_ArchiveModel):
@@ -46,7 +57,7 @@ class NTEGachaArchive(_ArchiveModel):
     format: Literal["nteuid-gacha"]
     version: Literal[1]
     uid: str = Field(pattern=r"^[0-9]+$")
-    source: Literal["tajiduo"]
+    source: Literal["tajiduo", "xiaoheihe", "taptap"]
     updated_at: int = Field(ge=0)
     pools: dict[PoolType, NTEGachaPool]
 

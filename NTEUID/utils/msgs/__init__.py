@@ -369,9 +369,11 @@ class GachaMsg:
     INVALID_TAP_ID = "TapTap user_id 必须是数字"
     INVALID_QUERY = "抽卡记录参数必须是 TapTap user_id 或小黑盒 user_pkey"
     TAPTAP_NOT_BOUND = f"该 TapTap 账号未绑定异环角色，\n请先完成绑定：{TAPTAP_BIND_GUIDE_URL}"
+    TAPTAP_IMPORT_FAILED = "TapTap 未返回有效的游戏 UID 或抽卡明细，无法保存。请刷新战绩数据后重试"
     LOAD_FAILED = "抽卡数据获取失败，请稍后再试"
     XHH_TARGET_NOT_BOUND = "该小黑盒账号未绑定异环角色"
     XHH_PKEY_EXPIRED = "小黑盒凭据已失效，请重新获取"
+    XHH_IMPORT_FAILED = "小黑盒未返回有效的游戏 UID 或抽卡明细，无法保存。请检查战绩隐私设置并刷新数据"
 
     @classmethod
     def not_logged_in(cls, is_other: bool = False, *, has_history: bool = False) -> str:

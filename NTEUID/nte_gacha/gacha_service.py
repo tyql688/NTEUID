@@ -32,10 +32,10 @@ async def run_my_gacha(bot: Bot, ev: Event, query: str = "") -> None:
 async def _run_direct_query(bot: Bot, ev: Event, query: str) -> None:
     tap_id = _normalize_tap_id(query)
     if tap_id is not None:
-        await send_tap_summary(bot, ev, tap_id=tap_id)
+        await send_tap_summary(bot, ev, tap_id=tap_id, history=_history)
         return
     if extract_heybox_id_from_pkey(query):
-        await send_xhh_summary_by_pkey(bot, ev, pkey=query)
+        await send_xhh_summary_by_pkey(bot, ev, pkey=query, history=_history)
         return
     await send_nte_notify(bot, ev, GachaMsg.INVALID_QUERY)
 
